@@ -121,3 +121,9 @@ def conv_keycode(action):
     for x in action:
         last_order_list.append(conv_keycode(x))
     return last_order_list
+
+
+def fetch_screen():
+    game_rect = win32gui.GetWindowRect(hwnd)
+    src_image = ImageGrab.grab(game_rect)
+    src_image.show()
