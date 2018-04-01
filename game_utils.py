@@ -188,3 +188,7 @@ def combo_3():
     # time.sleep(0.5)
     send_action("A" * 8)
     ReleaseKey(conv_keycode("2")[0])
+
+# TODO: Implement Action Set
+# Normal Set: [L R 2 8 7 9 3 1 44 66 4D 6D 1D 2D 3D 7D 8D 9D A B C 2A 2B 2C 6A 236 623 421 412]
+# Minimum Set: [L R A B C Stop]
