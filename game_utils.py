@@ -8,6 +8,7 @@ Created on Sun Apr  1 09:27:39 2018
 import win32gui
 import win32con
 from PIL import ImageGrab
+import numpy
 import time
 import ctypes
 
@@ -132,7 +133,17 @@ def conv_keycode(action):
 def fetch_screen():
     game_rect = win32gui.GetWindowRect(hwnd)
     src_image = ImageGrab.grab(game_rect)
-    src_image.show()
+    src_array = numpy.asarray(src_image)
+    hp_p1 = 0
+    hp_p2 = 0
+    for i in range(280):
+        if int(src_array[75, i, 0]) + int(src_array[75, i, 1]) > 300:
+            hp_p1 += 1
+    for i in range(369, 639):
+        if int(src_array[75, i, 0]) + int(src_array[75, i, 1]) > 300:
+            hp_p2 += 1
+    print(hp_p1, hp_p2)
+    return src_image
 
 
 def send_action(p):
