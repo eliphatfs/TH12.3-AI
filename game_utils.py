@@ -127,3 +127,10 @@ def fetch_screen():
     game_rect = win32gui.GetWindowRect(hwnd)
     src_image = ImageGrab.grab(game_rect)
     src_image.show()
+
+
+def send_action(p):
+    win32gui.ShowWindow(hwnd, win32con.SW_SHOW)
+    win32gui.SetForegroundWindow(hwnd)
+    time.sleep(0.02)
+    press_key(conv_keycode(p))
