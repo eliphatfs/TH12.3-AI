@@ -67,3 +67,10 @@ def ReleaseKey(hexKeyCode):
     ii_.ki = KeyBdInput(0, hexKeyCode, 0x0008 | 0x0002, 0, ctypes.pointer(extra))
     x = Input(ctypes.c_ulong(1), ii_)
     ctypes.windll.user32.SendInput(1, ctypes.pointer(x), ctypes.sizeof(x))
+
+
+hwnd = win32gui.FindWindow("th123_110", "东方非想天则 ～ 追寻特大型人偶之谜 Ver1.10(beta)")
+if not hwnd:
+    print('window not found!')
+else:
+    print(hwnd)
