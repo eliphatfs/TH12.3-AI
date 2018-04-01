@@ -115,8 +115,14 @@ def conv_keycode(action):
         return [0x25]
     elif action == "C":
         return [0x26]
-    elif len(action) == 2 and (action[1] == "A" or action[1] == "B" or action[1] == "C"):
-        return [conv_keycode(action[0])[0], conv_keycode(action[1])[0]]
+    elif action == "D":
+        return [0x39]
+    elif len(action) == 2 and (action[1] == "A" or action[1] == "B" or action[1] == "C" or action[1] == "D"):
+        o_list = []
+        for i in conv_keycode(action[0]):
+            o_list.append(i)
+        o_list.append(conv_keycode(action[1])[0])
+        return [o_list]
     last_order_list = []
     for x in action:
         last_order_list.append(conv_keycode(x))
