@@ -74,3 +74,50 @@ if not hwnd:
     print('window not found!')
 else:
     print(hwnd)
+
+
+def press_key(code):
+    for c in code:
+        if type(c) == list:
+            for cc in c:
+                PressKey(cc)
+            time.sleep(0.03)
+            for cc in c:
+                ReleaseKey(cc)
+        else:
+            PressKey(c)
+            time.sleep(0.03)
+            ReleaseKey(c)
+        time.sleep(0.03)
+        print(c)
+
+
+def conv_keycode(action):
+    if action == "2":
+        return [0x1F]
+    elif action == "8":
+        return [0x11]
+    elif action == "4":
+        return [0x1E]
+    elif action == "6":
+        return [0x20]
+    elif action == "3":
+        return [0x1F, 0x20]
+    elif action == "1":
+        return [0x1F, 0x1E]
+    elif action == "9":
+        return [0x11, 0x20]
+    elif action == "7":
+        return [0x11, 0x1E]
+    elif action == "A":
+        return [0x24]
+    elif action == "B":
+        return [0x25]
+    elif action == "C":
+        return [0x26]
+    elif len(action) == 2 and (action[1] == "A" or action[1] == "B" or action[1] == "C"):
+        return [conv_keycode(action[0])[0], conv_keycode(action[1])[0]]
+    last_order_list = []
+    for x in action:
+        last_order_list.append(conv_keycode(x))
+    return last_order_list
