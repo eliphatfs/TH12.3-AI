@@ -134,3 +134,40 @@ def send_action(p):
     win32gui.SetForegroundWindow(hwnd)
     time.sleep(0.02)
     press_key(conv_keycode(p))
+
+
+def combo_1():
+    send_action("A" * 15)
+    PressKey(conv_keycode("2")[0])
+    send_action("A" * 17)
+    send_action("C" * 3)
+    time.sleep(0.2)
+    ReleaseKey(conv_keycode("2")[0])
+
+
+def combo_2():
+    send_action("2")
+    PressKey(conv_keycode("2")[0])
+    time.sleep(0.2)
+    send_action("A" * 2)
+    ReleaseKey(conv_keycode("2")[0])
+    for i in range(10):
+        send_action("9C")
+
+
+def combo_3():
+    send_action("C")
+    time.sleep(0.3)
+    send_action("29")
+    time.sleep(0.2)
+    PressKey(conv_keycode("2")[0])
+    time.sleep(0.1)
+    send_action("C")
+    ReleaseKey(conv_keycode("2")[0])
+    time.sleep(0.3)
+    send_action("66")
+    send_action("A" * 14)
+    PressKey(conv_keycode("2")[0])
+    # time.sleep(0.5)
+    send_action("A" * 8)
+    ReleaseKey(conv_keycode("2")[0])
