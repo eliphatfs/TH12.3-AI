@@ -142,15 +142,15 @@ def fetch_screen():
     for i in range(369, 639):
         if int(src_array[75, i, 0]) + int(src_array[75, i, 1]) > 300:
             hp_p2 += 1
-    print(hp_p1, hp_p2)
-    return src_image
+    return src_image, hp_p1, hp_p2
 
 
 def send_action(p):
     win32gui.ShowWindow(hwnd, win32con.SW_SHOW)
     win32gui.SetForegroundWindow(hwnd)
     time.sleep(0.02)
-    press_key(conv_keycode(p))
+    if p is not None:
+        press_key(conv_keycode(p))
 
 
 def combo_1():
@@ -192,3 +192,34 @@ def combo_3():
 # TODO: Implement Action Set
 # Normal Set: [L R 2 8 7 9 3 1 44 66 4D 6D 1D 2D 3D 7D 8D 9D A B C 2A 2B 2C 6A 236 623 421 412]
 # Minimum Set: [L R A B C Stop]
+
+
+isL = False
+isR = False
+
+
+def act(index):  # Minimum Action Set Impl
+    send_action(None)
+    global isL, isR
+    if index == 0:
+        if not isL:
+            PressKey(conv_keycode("4")[0])
+            isL = True
+    else:
+        if isL:
+            ReleaseKey(conv_keycode("4")[0])
+            isL = False
+    if index == 1:
+        if not isR:
+            PressKey(conv_keycode("6")[0])
+            isR = True
+    else:
+        if isR:
+            ReleaseKey(conv_keycode("6")[0])
+            isR = False
+    if index == 2:
+        send_action("A")
+    elif index == 3:
+        send_action("B")
+    elif index == 4:
+        send_action("C")
