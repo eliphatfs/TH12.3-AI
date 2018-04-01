@@ -223,3 +223,9 @@ def act(index):  # Minimum Action Set Impl
         send_action("B")
     elif index == 4:
         send_action("C")
+    elif index == 5:
+        send_action("2")
+    elif index == 6:
+        send_action("9")
+    elif index == 7:
+        send_action("7")
