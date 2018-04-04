@@ -35,19 +35,19 @@ print("Model Compiled Successfully.")
 def remember(state, action, reward, next_state, done):
     global memory
     memory.append([state, action, reward, next_state, done])
-    if len(memory) > 1200:
+    if len(memory) > 1000:
         memory = memory[1:]
 
 
 def train():
-    for i in range(100):
+    for i in range(1000):
         pool = numpy.zeros((1, 5, 80, 80, 3))
         img, hp1, hp2 = game_utils.fetch_screen()
         pool[0, 0, :, :, :] = numpy.asarray(img.resize((80, 80)))
         state = copy.deepcopy(pool)
         last_hp1 = [hp1, hp1, hp1, hp1, hp1]
         last_hp2 = [hp2, hp2, hp2, hp2, hp2]
-        for time_t in range(60):
+        for time_t in range(100):
             # turn this on if you want to render
             # env.render()
             # 选择行为
@@ -64,10 +64,11 @@ def train():
             reward = last_hp2[0] - hp2 - (last_hp1[0] - hp1)
             # 记忆先前的状态，行为，回报与下一个状态
             remember(state, action, reward, next_state, False)
+            game_utils.press_key([0x2C])  # Z in case it should win
             # 使下一个状态成为下一帧的新状态
             state = copy.deepcopy(next_state)
             if hp1 < 13:
-                while hp1 < 250:
+                while hp1 < 230:
                     img, hp1, hp2 = game_utils.fetch_screen()
                     game_utils.press_key([0x2C])  # Z
                     time.sleep(0.2)
