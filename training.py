@@ -10,16 +10,26 @@ import model
 import numpy
 import keras
 import copy
+import time
 
 
-m = model.get_model()
-memory = []
+save_data_path = "FXTZ.dat"
 gamma = 0.9
 epsilon = 1
 epsilon_decay = .99
 epsilon_min = 0.1
+
+memory = []
+try:
+    print("Saved Model is Found. Loading...")
+    m = keras.models.load_model(save_data_path)
+except OSError:
+    print("Saved Model is Not Found. Building Model...")
+    m = model.get_model()
 m.compile(loss='mse',
           optimizer=keras.optimizers.Adadelta())
+m.summary()
+print("Model Compiled Successfully.")
 
 
 def remember(state, action, reward, next_state, done):
@@ -31,9 +41,9 @@ def remember(state, action, reward, next_state, done):
 
 def train():
     for i in range(100):
-        pool = numpy.zeros((1, 80, 80, 9))
+        pool = numpy.zeros((1, 5, 80, 80, 3))
         img, hp1, hp2 = game_utils.fetch_screen()
-        pool[:, :, :, 8] = numpy.asarray(img.convert("L").resize((80, 80))).reshape(1, 80, 80)
+        pool[0, 0, :, :, :] = numpy.asarray(img.resize((80, 80)))
         state = copy.deepcopy(pool)
         last_hp1 = [hp1, hp1, hp1, hp1, hp1]
         last_hp2 = [hp2, hp2, hp2, hp2, hp2]
@@ -44,8 +54,8 @@ def train():
             action = act(state)
             # 在环境中施加行为推动游戏进行
             img, hp1, hp2 = game_utils.fetch_screen()
-            pool[:, :, :, 0: 8] = pool[:, :, :, 1: 9]
-            pool[:, :, :, 8] = numpy.asarray(img.convert("L").resize((80, 80))).reshape(1, 80, 80)
+            pool[0, 0: 4, :, :, :] = pool[0, 1: 5, :, :, :]
+            pool[0, 0, :, :, :] = numpy.asarray(img.resize((80, 80)))
             next_state = copy.deepcopy(pool)
             last_hp1.append(hp1)
             last_hp1 = last_hp1[1:]
@@ -56,8 +66,14 @@ def train():
             remember(state, action, reward, next_state, False)
             # 使下一个状态成为下一帧的新状态
             state = copy.deepcopy(next_state)
+            if hp1 < 13:
+                while hp1 < 250:
+                    img, hp1, hp2 = game_utils.fetch_screen()
+                    game_utils.press_key([0x2C])  # Z
+                    time.sleep(0.2)
+
         # 通过之前的经验训练模型
-        game_utils.press_key([0x01])
+        game_utils.press_key([0x01])  # Esc
         replay(32)
         game_utils.press_key([0x01])
 
@@ -83,3 +99,6 @@ def replay(batch_size):
         m.fit(state, target_f, epochs=1, verbose=0)
     if epsilon > epsilon_min:
         epsilon *= epsilon_decay
+    print("Saving Model Data...")
+    m.save(save_data_path)
+    print("Model Data Saved.")
