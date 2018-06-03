@@ -7,6 +7,7 @@ Created on Sun Apr  1 09:27:39 2018
 
 import win32gui
 import win32con
+import win32process
 from PIL import ImageGrab
 import numpy
 import time
@@ -71,10 +72,50 @@ def ReleaseKey(hexKeyCode):
 
 
 hwnd = win32gui.FindWindow("th123_110", "东方非想天则 ～ 追寻特大型人偶之谜 Ver1.10(beta)")
+kernel32 = ctypes.windll.LoadLibrary("kernel32.dll")
+ReadProcessMemory = kernel32.ReadProcessMemory
+OpenProcess = kernel32.OpenProcess
+_bytes = ctypes.c_ulong(0)
+_root = ctypes.c_uint(0)
+_baseaddr1 = ctypes.c_uint(0)
+_baseaddr2 = ctypes.c_uint(0)
+_bytedata = ctypes.c_long(0)
 if not hwnd:
     print('window not found!')
 else:
     print(hwnd)
+    hreadID, processID = win32process.GetWindowThreadProcessId(hwnd)
+    proc = OpenProcess(win32con.PROCESS_ALL_ACCESS, 0, processID)
+    ReadProcessMemory(proc,
+                      0x008855C4,
+                      ctypes.byref(_root),
+                      4,
+                      ctypes.byref(_bytes))
+    ReadProcessMemory(proc,
+                      _root.value + 0x0c,
+                      ctypes.byref(_baseaddr1),
+                      4,
+                      ctypes.byref(_bytes))
+    ReadProcessMemory(proc,
+                      _root.value + 0x10,
+                      ctypes.byref(_baseaddr2),
+                      4,
+                      ctypes.byref(_bytes))
+    print(_bytes, _root, _baseaddr1, _baseaddr2)
+    while (True):
+        ReadProcessMemory(proc,
+                          _baseaddr1.value + 0xEC,
+                          ctypes.byref(_bytedata),
+                          4,
+                          ctypes.byref(_bytes))
+        print("1POS:", _bytes, _bytedata)
+        ReadProcessMemory(proc,
+                          _baseaddr2.value + 0xEC,
+                          ctypes.byref(_bytedata),
+                          4,
+                          ctypes.byref(_bytes))
+        print("2POS:", _bytes, _bytedata)
+        time.sleep(0.1)
 
 
 def press_key(code):
@@ -192,7 +233,6 @@ def combo_3():
 # TODO: Implement Action Set
 # Normal Set: [L R 2 8 7 9 3 1 44 66 4D 6D 1D 2D 3D 7D 8D 9D A B C 2A 2B 2C 6A 236 623 421 412]
 # Minimum Set: [L R A B C Stop]
-
 
 isL = False
 isR = False
