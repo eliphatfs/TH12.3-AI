@@ -1,0 +1,23 @@
+KEYBOARD-REP Data Mapping:
+(HEX)
+W 0100
+A 0400
+S 0200
+D 0800
+J 1000
+K 2000
+L 4000
+D 8000
+U 0001
+I 0002
+
+And in .rep, the format is 1p-2p (8 Hex Digits) per frame.
+If a player presses multiple keys, just OR them up, like: W&A => (01 | 04) => 05
+
+The first 123 bytes are the header. I don't know much of it, but:
+The 15th byte is 1P character, and the 64th is 2P character, where:
+Reimu 00	Marisa 01	Sakuya 02	Alice 03
+Patchouli 04	Youmu 05	Remilia 06	Yuyuko 07
+Yukari 08	Suika 09	Reisen 0A	Aya 0B
+Komachi 0C	Iku   0D	Tenshi 0E	Sanae 0F
+Cirno  10	Meirin 11	Utsuho 12	Suwako 13
