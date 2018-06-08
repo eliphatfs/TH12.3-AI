@@ -112,7 +112,7 @@ def update_base():
                       ctypes.byref(_bytes))
 
 
-def normalize_pos(raw):
+def normalize_posx(raw):
     x = (raw - 1109393408) / (1151008768 - 1109393408)
     if x < 0.0410:
         return 0.0
@@ -123,11 +123,24 @@ def normalize_pos(raw):
     return scaled
 
 
-def fetch_pos():
+def normalize_posy(raw):
+    if raw == 0:
+        return 0
+    x = (raw - 974045183) / (1143726080 - 974045183)
+    if x < 0.748226:
+        return 0.0
+    elif x > 0.998334:
+        return 1.0
+    linearized = numpy.power(numpy.e, 13.387113877117 * x)
+    scaled = linearized * 0.000001524590
+    return scaled
+
+
+def fetch_posx():
     """
     Returns
     -------------
-    (1P Pos, 2P Pos) where values are mapped to [0, 1],
+    (1P Pos X, 2P Pos X) where values are mapped to [0, 1],
     Linear, with an absolute error of around 0.01.
     """
     ReadProcessMemory(proc,
@@ -140,9 +153,51 @@ def fetch_pos():
                       ctypes.byref(_bytedata[1]),
                       4,
                       ctypes.byref(_bytes))
-    norm_pos1 = normalize_pos(_bytedata[0].value)
-    norm_pos2 = normalize_pos(_bytedata[1].value)
+    norm_pos1 = normalize_posx(_bytedata[0].value)
+    norm_pos2 = normalize_posx(_bytedata[1].value)
     return norm_pos1, norm_pos2
+
+
+def fetch_posy():
+    """
+    Returns
+    -------------
+    (1P Pos Y, 2P Pos Y) where values are mapped to [0, 1],
+    Linear, with an absolute error of around 0.01.
+    """
+    ReadProcessMemory(proc,
+                      _baseaddr1.value + 0xF0,
+                      ctypes.byref(_bytedata[0]),
+                      4,
+                      ctypes.byref(_bytes))
+    ReadProcessMemory(proc,
+                      _baseaddr2.value + 0xF0,
+                      ctypes.byref(_bytedata[1]),
+                      4,
+                      ctypes.byref(_bytes))
+    norm_pos1 = normalize_posy(_bytedata[0].value)
+    norm_pos2 = normalize_posy(_bytedata[1].value)
+    return norm_pos1, norm_pos2
+
+
+def fetch_hp():
+    """
+    Returns
+    -------------
+    Integer Tuple (1P HP, 2P HP) within range [0, 10000],
+    linear to HP and perfectly matches the damage in the game.
+    """
+    ReadProcessMemory(proc,
+                      _baseaddr1.value + 0x184,
+                      ctypes.byref(_bytedata[0]),
+                      4,
+                      ctypes.byref(_bytes))
+    ReadProcessMemory(proc,
+                      _baseaddr2.value + 0x184,
+                      ctypes.byref(_bytedata[1]),
+                      4,
+                      ctypes.byref(_bytes))
+    return _bytedata[0].value - 655360000, _bytedata[1].value - 655360000
 
 
 def press_key(code):
