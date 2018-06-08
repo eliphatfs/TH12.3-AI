@@ -14,7 +14,8 @@ import time
 import ctypes
 
 
-# from: https://stackoverflow.com/questions/14489013/simulate-python-keypresses-for-controlling-a-game
+# from:
+# https://stackoverflow.com/questions/14489013/simulate-python-keypresses-for-controlling-a-game
 SendInput = ctypes.windll.user32.SendInput
 
 # C struct redefinitions
@@ -66,7 +67,9 @@ def PressKey(hexKeyCode):
 def ReleaseKey(hexKeyCode):
     extra = ctypes.c_ulong(0)
     ii_ = Input_I()
-    ii_.ki = KeyBdInput(0, hexKeyCode, 0x0008 | 0x0002, 0, ctypes.pointer(extra))
+    ii_.ki = KeyBdInput(0, hexKeyCode,
+                        0x0008 | 0x0002, 0,
+                        ctypes.pointer(extra))
     x = Input(ctypes.c_ulong(1), ii_)
     ctypes.windll.user32.SendInput(1, ctypes.pointer(x), ctypes.sizeof(x))
 
@@ -79,43 +82,67 @@ _bytes = ctypes.c_ulong(0)
 _root = ctypes.c_uint(0)
 _baseaddr1 = ctypes.c_uint(0)
 _baseaddr2 = ctypes.c_uint(0)
-_bytedata = ctypes.c_long(0)
+_bytedata = [ctypes.c_long(0) for i in range(16)]
 if not hwnd:
     print('window not found!')
 else:
     print(hwnd)
     hreadID, processID = win32process.GetWindowThreadProcessId(hwnd)
     proc = OpenProcess(win32con.PROCESS_ALL_ACCESS, 0, processID)
+
+
+def update_base():
+    """
+    Fetch base address changes caused by a new battle.
+    """
     ReadProcessMemory(proc,
-                      0x008855C4,
+                      0x008855C4,  # Battle Mgr
                       ctypes.byref(_root),
                       4,
                       ctypes.byref(_bytes))
     ReadProcessMemory(proc,
-                      _root.value + 0x0c,
+                      _root.value + 0x0c,  # 1P Base
                       ctypes.byref(_baseaddr1),
                       4,
                       ctypes.byref(_bytes))
     ReadProcessMemory(proc,
-                      _root.value + 0x10,
+                      _root.value + 0x10,  # 2P Base
                       ctypes.byref(_baseaddr2),
                       4,
                       ctypes.byref(_bytes))
-    print(_bytes, _root, _baseaddr1, _baseaddr2)
-    while (True):
-        ReadProcessMemory(proc,
-                          _baseaddr1.value + 0xEC,
-                          ctypes.byref(_bytedata),
-                          4,
-                          ctypes.byref(_bytes))
-        print("1POS:", _bytes, _bytedata)
-        ReadProcessMemory(proc,
-                          _baseaddr2.value + 0xEC,
-                          ctypes.byref(_bytedata),
-                          4,
-                          ctypes.byref(_bytes))
-        print("2POS:", _bytes, _bytedata)
-        time.sleep(0.1)
+
+
+def normalize_pos(raw):
+    x = (raw - 1109393408) / (1151008768 - 1109393408)
+    if x < 0.0410:
+        return 0.0
+    elif x > 0.9865:
+        return 1.0
+    linearized = numpy.power(numpy.e, 3.62427340 * x)
+    scaled = linearized * 0.02775426
+    return scaled
+
+
+def fetch_pos():
+    """
+    Returns
+    -------------
+    (1P Pos, 2P Pos) where values are mapped to [0, 1],
+    Linear, with an absolute error of around 0.01.
+    """
+    ReadProcessMemory(proc,
+                      _baseaddr1.value + 0xEC,
+                      ctypes.byref(_bytedata[0]),
+                      4,
+                      ctypes.byref(_bytes))
+    ReadProcessMemory(proc,
+                      _baseaddr2.value + 0xEC,
+                      ctypes.byref(_bytedata[1]),
+                      4,
+                      ctypes.byref(_bytes))
+    norm_pos1 = normalize_pos(_bytedata[0].value)
+    norm_pos2 = normalize_pos(_bytedata[1].value)
+    return norm_pos1, norm_pos2
 
 
 def press_key(code):
@@ -136,13 +163,13 @@ def press_key(code):
 
 def conv_keycode(action):
     if action == "2":
-        return [0x1F]
+        return [0x1F]  # S
     elif action == "8":
-        return [0x11]
+        return [0x11]  # W
     elif action == "4":
-        return [0x1E]
+        return [0x1E]  # A
     elif action == "6":
-        return [0x20]
+        return [0x20]  # D
     elif action == "3":
         return [0x1F, 0x20]
     elif action == "1":
@@ -152,14 +179,18 @@ def conv_keycode(action):
     elif action == "7":
         return [0x11, 0x1E]
     elif action == "A":
-        return [0x24]
+        return [0x24]  # J
     elif action == "B":
-        return [0x25]
+        return [0x25]  # K
     elif action == "C":
-        return [0x26]
+        return [0x26]  # L
     elif action == "D":
-        return [0x39]
-    elif len(action) == 2 and (action[1] == "A" or action[1] == "B" or action[1] == "C" or action[1] == "D"):
+        return [0x39]  # Space
+    elif len(action) == 2 and\
+            (action[1] == "A" or
+             action[1] == "B" or
+             action[1] == "C" or
+             action[1] == "D"):
         o_list = []
         for i in conv_keycode(action[0]):
             o_list.append(i)
@@ -231,8 +262,11 @@ def combo_3():
     ReleaseKey(conv_keycode("2")[0])
 
 # TODO: Implement Action Set
-# Normal Set: [L R 2 8 7 9 3 1 44 66 4D 6D 1D 2D 3D 7D 8D 9D A B C 2A 2B 2C 6A 236 623 421 412]
+# Normal Set:
+# [L R 2 8 7 9 3 1 44 66 4D 6D 1D 2D 3D 7D 8D 9D
+#  A B C 2A 2B 2C 6A 236 623 421 412]
 # Minimum Set: [L R A B C Stop]
+
 
 isL = False
 isR = False
