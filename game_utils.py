@@ -200,6 +200,25 @@ def fetch_hp():
     return _bytedata[0].value - 655360000, _bytedata[1].value - 655360000
 
 
+def fetch_action():
+    """
+    Returns
+    -------------
+    Integer Tuple (1P Action, 2P Action).
+    """
+    ReadProcessMemory(proc,
+                      _baseaddr1.value + 0x50,
+                      ctypes.byref(_bytedata[0]),
+                      4,
+                      ctypes.byref(_bytes))
+    ReadProcessMemory(proc,
+                      _baseaddr2.value + 0x50,
+                      ctypes.byref(_bytedata[1]),
+                      4,
+                      ctypes.byref(_bytes))
+    return _bytedata[0].value, _bytedata[1].value
+
+
 def press_key(code):
     for c in code:
         if type(c) == list:
