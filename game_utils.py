@@ -56,6 +56,17 @@ class Input(ctypes.Structure):
                 ("ii", Input_I)]
 
 
+class POperation(ctypes.Structure):
+    _fields_ = [("lr", ctypes.c_long),
+                ("ud", ctypes.c_long),
+                ("a", ctypes.c_long),
+                ("b", ctypes.c_long),
+                ("c", ctypes.c_long),
+                ("d", ctypes.c_long),
+                ("ch", ctypes.c_long),
+                ("s", ctypes.c_long)]
+
+
 def PressKey(hexKeyCode):
     extra = ctypes.c_ulong(0)
     ii_ = Input_I()
@@ -83,6 +94,7 @@ _root = ctypes.c_uint(0)
 _baseaddr1 = ctypes.c_uint(0)
 _baseaddr2 = ctypes.c_uint(0)
 _bytedata = [ctypes.c_long(0) for i in range(16)]
+_input = POperation()
 if not hwnd:
     print('window not found!')
 else:
@@ -217,6 +229,71 @@ def fetch_action():
                       4,
                       ctypes.byref(_bytes))
     return _bytedata[0].value, _bytedata[1].value
+
+
+def fetch_operation():
+    """
+    Returns
+    -------------
+    Integer Tuple (1P Operation, 2P Operation).
+    The Result is in the format of Replay Data,
+    But the Second byte in the Replay is the Higher byte here.
+    """
+    ReadProcessMemory(proc,
+                      _baseaddr1.value + 0x754,
+                      ctypes.byref(_input),
+                      32,
+                      ctypes.byref(_bytes))
+    now = 0
+    if (_input.ud < 0):
+        now |= 1
+    if (_input.ud > 0):
+        now |= 2
+    if (_input.lr < 0):
+        now |= 4
+    if (_input.lr > 0):
+        now |= 8
+    if (_input.a > 0):
+        now |= 16
+    if (_input.b > 0):
+        now |= 32
+    if (_input.c > 0):
+        now |= 64
+    if (_input.d > 0):
+        now |= 128
+    if (_input.ch > 0):
+        now |= 256
+    if (_input.s > 0):
+        now |= 512
+    p1 = now
+    ReadProcessMemory(proc,
+                      _baseaddr2.value + 0x754,
+                      ctypes.byref(_input),
+                      32,
+                      ctypes.byref(_bytes))
+    now = 0
+    if (_input.ud < 0):
+        now |= 1
+    if (_input.ud > 0):
+        now |= 2
+    if (_input.lr < 0):
+        now |= 4
+    if (_input.lr > 0):
+        now |= 8
+    if (_input.a > 0):
+        now |= 16
+    if (_input.b > 0):
+        now |= 32
+    if (_input.c > 0):
+        now |= 64
+    if (_input.d > 0):
+        now |= 128
+    if (_input.ch > 0):
+        now |= 256
+    if (_input.s > 0):
+        now |= 512
+    p2 = now
+    return p1, p2
 
 
 def press_key(code):
