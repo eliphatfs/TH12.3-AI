@@ -231,6 +231,25 @@ def fetch_action():
     return _bytedata[0].value, _bytedata[1].value
 
 
+def fetch_char():
+    """
+    Returns
+    -------------
+    Integer Tuple (1P Char, 2P Char).
+    """
+    ReadProcessMemory(proc,
+                      0x00886CF0,
+                      ctypes.byref(_bytedata[0]),
+                      4,
+                      ctypes.byref(_bytes))
+    ReadProcessMemory(proc,
+                      0x00886D10,
+                      ctypes.byref(_bytedata[1]),
+                      4,
+                      ctypes.byref(_bytes))
+    return _bytedata[0].value, _bytedata[1].value
+
+
 def fetch_operation():
     """
     Returns
