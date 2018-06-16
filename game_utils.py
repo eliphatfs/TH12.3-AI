@@ -85,7 +85,6 @@ def ReleaseKey(hexKeyCode):
     ctypes.windll.user32.SendInput(1, ctypes.pointer(x), ctypes.sizeof(x))
 
 
-hwnd = win32gui.FindWindow("th123_110", "东方非想天则 ～ 追寻特大型人偶之谜 Ver1.10(beta)")
 kernel32 = ctypes.windll.LoadLibrary("kernel32.dll")
 ReadProcessMemory = kernel32.ReadProcessMemory
 OpenProcess = kernel32.OpenProcess
@@ -93,14 +92,19 @@ _bytes = ctypes.c_ulong(0)
 _root = ctypes.c_uint(0)
 _baseaddr1 = ctypes.c_uint(0)
 _baseaddr2 = ctypes.c_uint(0)
-_bytedata = [ctypes.c_long(0) for i in range(16)]
+_bytedata = [ctypes.c_long(0) for i in range(8)]
+_chardata = [ctypes.c_byte(0) for i in range(8)]
+_shortdata = [ctypes.c_short(0) for i in range(8)]
 _input = POperation()
-if not hwnd:
-    print('window not found!')
-else:
-    print(hwnd)
-    hreadID, processID = win32process.GetWindowThreadProcessId(hwnd)
-    proc = OpenProcess(win32con.PROCESS_ALL_ACCESS, 0, processID)
+hwnd = 0
+
+
+def update_proc():
+    global hwnd, proc
+    hwnd = win32gui.FindWindow("th123_110", None)
+    if hwnd:
+        hreadID, processID = win32process.GetWindowThreadProcessId(hwnd)
+        proc = OpenProcess(win32con.PROCESS_ALL_ACCESS, 0, processID)
 
 
 def update_base():
@@ -219,16 +223,16 @@ def fetch_action():
     Integer Tuple (1P Action, 2P Action).
     """
     ReadProcessMemory(proc,
-                      _baseaddr1.value + 0x50,
-                      ctypes.byref(_bytedata[0]),
-                      4,
+                      _baseaddr1.value + 0x13C,
+                      ctypes.byref(_shortdata[0]),
+                      2,
                       ctypes.byref(_bytes))
     ReadProcessMemory(proc,
-                      _baseaddr2.value + 0x50,
-                      ctypes.byref(_bytedata[1]),
-                      4,
+                      _baseaddr2.value + 0x13C,
+                      ctypes.byref(_shortdata[1]),
+                      2,
                       ctypes.byref(_bytes))
-    return _bytedata[0].value, _bytedata[1].value
+    return _shortdata[0].value, _shortdata[1].value
 
 
 def fetch_char():
@@ -313,6 +317,29 @@ def fetch_operation():
         now |= 512
     p2 = now
     return p1, p2
+
+
+def fetch_status():
+    ReadProcessMemory(proc,
+                      0x0088D024,
+                      ctypes.byref(_bytedata[2]),
+                      4,
+                      ctypes.byref(_bytes))
+    return _bytedata[2].value
+
+
+def fetch_wincnt():
+    ReadProcessMemory(proc,
+                      _baseaddr1.value + 0x573,
+                      ctypes.byref(_chardata[0]),
+                      1,
+                      ctypes.byref(_bytes))
+    ReadProcessMemory(proc,
+                      _baseaddr2.value + 0x573,
+                      ctypes.byref(_chardata[1]),
+                      1,
+                      ctypes.byref(_bytes))
+    return _chardata[0].value, _chardata[1].value
 
 
 def press_key(code):
@@ -473,3 +500,6 @@ def act(index):  # Minimum Action Set Impl
         send_action("9")
     elif index == 7:
         send_action("7")
+
+
+update_proc()
