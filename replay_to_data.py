@@ -26,6 +26,7 @@ OUTPUT_PATH = "D:/AI_DataSet/DATASET_REMI_TXT"
 
 def replay_to_data(cancel_on_title_met=False):
     print("Wait For Battle Detection...")
+    time_begin = time.time()
     while (gu.fetch_status() not in [0x05, 0x0e]
             or gu.fetch_wincnt()[0] > 256
             or gu.fetch_wincnt()[1] > 256):
@@ -33,6 +34,8 @@ def replay_to_data(cancel_on_title_met=False):
             th123.terminate()
             return
         if not psth123.is_running():
+            return
+        if time.time() > time_begin + 30.0:
             return
         time.sleep(0.5)
     print("Battle Detected!")
@@ -46,7 +49,9 @@ def replay_to_data(cancel_on_title_met=False):
     f.write("P2: ")
     f.write(str(gu.fetch_char()[1]))
     f.write("\n")
-    while hp1 > 0 and hp2 > 0 and gu.fetch_status() in [0x05, 0x0e]:
+    while (psth123.is_running()
+           and hp1 > 0 and hp2 > 0
+           and gu.fetch_status() in [0x05, 0x0e]):
         hp1, hp2 = gu.fetch_hp()
         key1, key2 = gu.fetch_operation()
         pos1x, pos2x = gu.fetch_posx()
@@ -88,7 +93,8 @@ def replay_to_data(cancel_on_title_met=False):
         while hp1 <= 0 or hp2 <= 0:
             time.sleep(0.5)
             hp1, hp2 = gu.fetch_hp()
-            if gu.fetch_status() not in [0x05, 0x0e]:
+            if (gu.fetch_status() not in [0x05, 0x0e]
+                    or not psth123.is_running()):
                 return
         replay_to_data(cancel_on_title_met)
 
@@ -123,5 +129,8 @@ if __name__ == "__main__":
             gu.update_proc_with_pid(th123.pid)
             replay_to_data(True)
             th123.terminate()
+            time_begin = time.time()
             while psth123.is_running():
+                if time.time() > time_begin + 30.0:
+                    break
                 time.sleep(1.0)
