@@ -13,7 +13,7 @@ import numpy as np
 N_CLASS = 45
 
 
-def key_to_category(key, one_hot=False):
+def key_to_category(key, one_hot=False, new=False):
     cws = 0
     cad = 0
     cjkld = 0
@@ -33,17 +33,19 @@ def key_to_category(key, one_hot=False):
         cjkld = 1
     if key & 32 > 0:
         cjkld = 2
-    if one_hot:
+    if new:
+        return np.eye(5)[cjkld], np.eye(3)[cad], np.eye(3)[cws]
+    elif one_hot:
         return np.eye(N_CLASS)[cjkld * 9 + cad * 3 + cws]
     else:
         return cjkld * 9 + cad * 3 + cws
 
 
-def encode_keylist(list_key, merge=2, one_hot=True):
+def encode_keylist(list_key, merge=2, one_hot=True, new=False):
     list_key = list_key.copy()
     tmp = []
     for i in range(len(list_key)):
-        list_key[i] = key_to_category(list_key[i])
+        list_key[i] = key_to_category(list_key[i], one_hot=one_hot, new=new)
     for i in range(0, len(list_key), merge):
         tmp.append(list_key[i])
     list_key = tmp
@@ -54,9 +56,6 @@ def encode_keylist(list_key, merge=2, one_hot=True):
             tmp.append(list_key[j])
         list_key = tmp
         tmp = []'''
-    if one_hot:
-        for i in range(len(list_key)):
-            list_key[i] = np.eye(N_CLASS)[list_key[i]]
     return np.array(list_key)
 
 
@@ -73,18 +72,27 @@ def get_model():
     dnn_pos = layers.Activation("tanh")(dnn_pos)
 
     enemy_key = layers.Input(shape=[30, 45])
+    enemy_dnn = layers.TimeDistributed(layers.Dense(45))(enemy_key)
+    enemy_dnn = layers.Activation("tanh")(enemy_dnn)
     my_key = layers.Input(shape=[30, 45])
+    my_dnn = layers.TimeDistributed(layers.Dense(45))(my_key)
+    my_dnn = layers.Activation("tanh")(my_dnn)
     concat = layers.Concatenate()([dnn_action, dnn_pos,
-                                   enemy_key, my_key])
+                                   enemy_dnn, my_dnn])
+    gate = layers.Dense(180, activation="softmax")(concat)
+    concat = layers.Multiply()([gate, concat])
     flatten = layers.Flatten()(concat)
-    dense = layers.Dense(256, activation="tanh")(flatten)
-    dense = layers.Dense(256, activation="tanh")(dense)
+    dense = layers.Dense(256, activation="relu")(flatten)
     dense = layers.Dense(128, activation="tanh")(dense)
     dense = layers.Dense(128, activation="tanh")(dense)
-    dense_category = layers.Dense(45, activation='softmax')(dense)
+    dense_category_1 = layers.Dense(5, activation='softmax')(dense)
+    dense_category_2 = layers.Dense(3, activation='softmax')(dense)
+    dense_category_3 = layers.Dense(3, activation='softmax')(dense)
     return keras.models.Model(inputs=[char_action,
                                       position,
                                       enemy_key,
                                       my_key],
-                              outputs=[dense_category],
+                              outputs=[dense_category_1,
+                                       dense_category_2,
+                                       dense_category_3],
                               name="TH123AI")

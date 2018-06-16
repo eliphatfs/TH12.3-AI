@@ -33,7 +33,10 @@ def act(result, my=0):
     next_d = (result % 9) // 3
     for i in range(2, 4):
         keystate[i] = next_d == i - 1
-    if first_d == 0:
+    last_d = result % 3
+    for i in range(0, 2):
+        keystate[i] = last_d == i + 1
+    if first_d == 0 and last_d != 1:
         if gu.fetch_posx()[1 - my] - gu.fetch_posx()[my] > 0:
             oldkeystate[2] = False
             keystate[2] = True
@@ -44,10 +47,6 @@ def act(result, my=0):
             keystate[2] = False
             oldkeystate[3] = False
             keystate[3] = True
-    last_d = result % 3
-    for i in range(0, 2):
-        keystate[i] = last_d == i + 1
-    if first_d == 0:
         if ((gu.fetch_operation()[1 - my] & 2 > 0)
                 and gu.fetch_posy()[1 - my] < 0.01):
             oldkeystate[1] = False
@@ -76,7 +75,15 @@ def play(my=0):
     en_key = []
     my_key = []
     keys = [[], []]
+    oldhp = [10000, 10000]
     while gu.fetch_hp()[0] > 0 and gu.fetch_hp()[1] > 0:
+        if (oldhp[en] < gu.fetch_hp()[en]
+                and gu.fetch_posy()[en] < 0.05
+                and abs(gu.fetch_posx()[en] - 0.5) > 0.42):
+            oldhp[0], oldhp[1] = gu.fetch_hp()
+            gu.combo_1()
+            continue
+        oldhp[0], oldhp[1] = gu.fetch_hp()
         char_data = gu.fetch_char()
         px = gu.fetch_posx()
         py = gu.fetch_posy()
@@ -110,14 +117,17 @@ def play(my=0):
         Y = m.predict([np.array(char_act),
                        np.array(pos),
                        np.array(en_key),
-                       np.array(my_key)], batch_size=1)[0]
+                       np.array(my_key)], batch_size=1)
         char_act = []
         pos = []
         en_key = []
         my_key = []
-        category = np.argmax(Y)
-        # category = np.random.choice([x for x in range(45)], p=Y)
-        time.sleep(0.06)
+        category = np.argmax(Y[0]) * 9 + np.argmax(Y[1]) * 3 + np.argmax(Y[2])
+        category1 = np.random.choice([x for x in range(5)], p=Y[0][0])
+        category2 = np.random.choice([x for x in range(3)], p=Y[1][0])
+        category3 = np.random.choice([x for x in range(3)], p=Y[2][0])
+        category = category1 * 9 + category2 * 3 + category3
+        time.sleep(0.04)
         act(category, my)
 
 

@@ -20,11 +20,13 @@ def data_loader(batch_size=32, my_char=6):
     pos = []
     en_key = []
     my_key = []
-    Y = []
+    Y1 = []
+    Y2 = []
+    Y3 = []
     while True:
         for r, d, f in os.walk(DATA_PATH):
             random.shuffle(f)
-            seq = [0] + [16] * 8 + [32] * 3 + [64] * 3 + [128] * 3 + [1]
+            seq = [0] * 2 + [16] * 9 + [32, 64, 128, 1] * 2
             st = 0
             for n in f:
                 st += 1
@@ -75,17 +77,25 @@ def data_loader(batch_size=32, my_char=6):
                                              pyen - pymy]))
                         my_key.append(mv2.encode_keylist(keys[0][:-1]))
                         en_key.append(mv2.encode_keylist(keys[1][:-1]))
-                        Y.append(mv2.key_to_category(keys[0][-1], True))
-                        if len(Y) == batch_size:
-                            yield [np.array(char_act),
-                                   np.array(pos),
-                                   np.array(en_key),
-                                   np.array(my_key)], np.array(Y)
+                        y1, y2, y3 = mv2.key_to_category(keys[0][-1], new=True)
+                        Y1.append(y1)
+                        Y2.append(y2)
+                        Y3.append(y3)
+                        if len(Y1) == batch_size:
+                            yield ([np.array(char_act),
+                                    np.array(pos),
+                                    np.array(en_key),
+                                    np.array(my_key)],
+                                   [np.array(Y1),
+                                    np.array(Y2),
+                                    np.array(Y3)])
                             char_act = []
                             pos = []
                             en_key = []
                             my_key = []
-                            Y = []
+                            Y1 = []
+                            Y2 = []
+                            Y3 = []
                     line = file.readline()
                 file.close()
 
