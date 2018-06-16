@@ -95,6 +95,10 @@ def play(my=0):
                 act(42, my)
             keys[0].append(gu.fetch_operation()[0])
             keys[1].append(gu.fetch_operation()[1])
+            poses.append(np.array([px[my], py[my],
+                                   px[en], py[en],
+                                   px[en] - px[my],
+                                   py[en] - py[my]]))
             time.sleep(0.1)
             continue
         keys[0].append(gu.fetch_operation()[my])
