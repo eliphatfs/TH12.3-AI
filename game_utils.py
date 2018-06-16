@@ -107,6 +107,11 @@ def update_proc():
         proc = OpenProcess(win32con.PROCESS_ALL_ACCESS, 0, processID)
 
 
+def update_proc_with_pid(pid):
+    global proc
+    proc = OpenProcess(win32con.PROCESS_ALL_ACCESS, 0, pid)
+
+
 def update_base():
     """
     Fetch base address changes caused by a new battle.

@@ -9,11 +9,13 @@ import game_utils as gu
 import time
 import os
 import subprocess
+import psutil
 
 
 # Config for Auto Replay to Data
 AUTO = True
-BEGIN = 6
+BEGIN = 0
+END = 5518
 REPLAY_PATH = r"D:\AI_DataSet\DATASET_REMI"
 EXE_PATH = r"D:\AI_DataSet\TH123\th123\th123.exe"
 # To be automatic, SWRSToys & ReplayDnD should be enabled
@@ -29,6 +31,8 @@ def replay_to_data(cancel_on_title_met=False):
             or gu.fetch_wincnt()[1] > 256):
         if gu.fetch_status() == 0x02 and cancel_on_title_met:
             th123.terminate()
+            return
+        if not psth123.is_running():
             return
         time.sleep(0.5)
     print("Battle Detected!")
@@ -86,10 +90,14 @@ def replay_to_data(cancel_on_title_met=False):
             hp1, hp2 = gu.fetch_hp()
             if gu.fetch_status() not in [0x05, 0x0e]:
                 return
-        replay_to_data()
+        replay_to_data(cancel_on_title_met)
 
 
 if __name__ == "__main__":
+    print("Start From:")
+    BEGIN = int(input())
+    print("End With:")
+    END = int(input())
     if not AUTO:
         replay_to_data()
     else:
@@ -101,7 +109,7 @@ if __name__ == "__main__":
             ds[i] = (int(ds[i][1].split("_")[0]), ds[i][0], ds[i][1])
         ds = sorted(ds)
         for d in ds:
-            if d[0] < BEGIN:
+            if d[0] < BEGIN or d[0] > END:
                 continue
             stinfo = subprocess.STARTUPINFO()
             stinfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
@@ -109,11 +117,11 @@ if __name__ == "__main__":
             gu.update_proc()
             th123 = subprocess.Popen([EXE_PATH, os.path.join(d[1], d[2])],
                                      startupinfo=stinfo)
-            print("Current:", d[0], d[2].encode("gbk", errors='ignore').decode('gbk'))
-            while gu.hwnd == 0:
-                time.sleep(1.0)
-                gu.update_proc()
+            psth123 = psutil.Process(th123.pid)
+            print("Current:", d[0],
+                  d[2].encode("gbk", errors='ignore').decode('gbk'))
+            gu.update_proc_with_pid(th123.pid)
             replay_to_data(True)
-            while gu.hwnd != 0:
+            th123.terminate()
+            while psth123.is_running():
                 time.sleep(1.0)
-                gu.update_proc()
