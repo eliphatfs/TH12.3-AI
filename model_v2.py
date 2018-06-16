@@ -59,32 +59,45 @@ def encode_keylist(list_key, merge=2, one_hot=True, new=False):
     return np.array(list_key)
 
 
+def attention_3d_block(inputs):
+    a = layers.Permute((2, 1))(inputs)
+    a = layers.Dense(30, activation='softmax')(a)
+    a_probs = layers.Permute((2, 1))(a)
+    output_attention_mul = layers.Multiply()([inputs, a_probs])
+    return output_attention_mul
+
+
+def conv1d_block(*args, **kwargs):
+    def conv1d_get_tensor(inputs):
+        x = layers.Conv1D(*args, **kwargs)(inputs)
+        x = layers.BatchNormalization()(x)
+        x = layers.LeakyReLU()(x)
+        return x
+    return conv1d_get_tensor
+
+
 def get_model():
     char_action = layers.Input(shape=[4])
-    repeated_action = layers.RepeatVector(30)(char_action)
-    dnn_action = layers.TimeDistributed(layers.Dense(45))(repeated_action)
-    dnn_action = layers.BatchNormalization()(dnn_action)
-    dnn_action = layers.Activation("tanh")(dnn_action)
+    repeated_action = layers.RepeatVector(45)(char_action)
 
-    position = layers.Input(shape=[6])
-    repeated_position = layers.RepeatVector(30)(position)
-    dnn_pos = layers.TimeDistributed(layers.Dense(45))(repeated_position)
-    dnn_pos = layers.Activation("tanh")(dnn_pos)
+    position = layers.Input(shape=[45, 6])
 
-    enemy_key = layers.Input(shape=[30, 45])
-    enemy_dnn = layers.TimeDistributed(layers.Dense(45))(enemy_key)
-    enemy_dnn = layers.Activation("tanh")(enemy_dnn)
-    my_key = layers.Input(shape=[30, 45])
-    my_dnn = layers.TimeDistributed(layers.Dense(45))(my_key)
-    my_dnn = layers.Activation("tanh")(my_dnn)
-    concat = layers.Concatenate()([dnn_action, dnn_pos,
-                                   enemy_dnn, my_dnn])
-    gate = layers.Dense(180, activation="softmax")(concat)
+    enemy_key = layers.Input(shape=[45, 45])
+
+    my_key = layers.Input(shape=[45, 45])
+    concat = layers.Concatenate()([repeated_action, position,
+                                   enemy_key, my_key])
+    gate = layers.Dense(100, activation="sigmoid")(concat)
     concat = layers.Multiply()([gate, concat])
-    flatten = layers.Flatten()(concat)
-    dense = layers.Dense(256, activation="relu")(flatten)
-    dense = layers.Dense(128, activation="tanh")(dense)
-    dense = layers.Dense(128, activation="tanh")(dense)
+    c1 = conv1d_block(128, 1)(concat)
+    c2 = conv1d_block(128, 3, padding="causal")(c1)
+    c3 = conv1d_block(128, 3, padding="causal", dilation_rate=2)(c2)
+    c4 = conv1d_block(128, 3, padding="causal", dilation_rate=4)(c3)
+    c5 = conv1d_block(128, 3, padding="causal", dilation_rate=8)(c4)
+    c5 = conv1d_block(128, 3, padding="causal", dilation_rate=16)(c4)
+    c6 = conv1d_block(8, 1)(c5)
+    c6 = layers.Flatten()(c6)
+    dense = layers.Dense(256, activation='relu')(c6)
     dense_category_1 = layers.Dense(5, activation='softmax')(dense)
     dense_category_2 = layers.Dense(3, activation='softmax')(dense)
     dense_category_3 = layers.Dense(3, activation='softmax')(dense)

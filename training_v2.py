@@ -15,7 +15,7 @@ from keras import callbacks
 DATA_PATH = r"D:\AI_DataSet\DATASET_REMI_TXT"
 
 
-def data_loader(batch_size=32, my_char=6):
+def data_loader(batch_size=8, my_char=6):
     char_act = []
     pos = []
     en_key = []
@@ -26,7 +26,7 @@ def data_loader(batch_size=32, my_char=6):
     while True:
         for r, d, f in os.walk(DATA_PATH):
             random.shuffle(f)
-            seq = [0] * 2 + [16] * 9 + [32, 64, 128, 1] * 2
+            seq = [0] + [16] * 3 + [32, 64, 128, 1]
             st = 0
             for n in f:
                 st += 1
@@ -47,6 +47,7 @@ def data_loader(batch_size=32, my_char=6):
                 en = 1 - my
                 file.readline()
                 keys = [[], []]
+                poses = []
                 line = file.readline()
                 while line != "":
                     data = line.split("; ")
@@ -56,25 +57,28 @@ def data_loader(batch_size=32, my_char=6):
                         break
                     keys[0].append(int(data[my][3]))
                     keys[1].append(int(data[en][3]))
-                    if len(keys[0]) > 60:
+                    pxmy = float(data[my][1])
+                    pymy = float(data[my][2])
+                    pxen = float(data[en][1])
+                    pyen = float(data[en][2])
+                    poses.append(np.array([pxmy, pymy,
+                                           pxen, pyen,
+                                           pxen - pxmy,
+                                           pyen - pymy]))
+                    if len(keys[0]) > 90:
                         keys[0] = keys[0][1:]
-                    if len(keys[1]) > 60:
+                    if len(keys[1]) > 90:
                         keys[1] = keys[1][1:]
-                    if (len(keys[0]) == 60
+                    if len(poses) > 90:
+                        poses = poses[1:]
+                    if (len(keys[0]) == 90
                             and keys[0][-1] != keys[0][-2]
                             and keys[0][-1] & seq[st] == seq[st]):
                         char_act.append(np.array([char_data[my],
                                                   int(data[my][4]),
                                                   char_data[en],
                                                   int(data[en][4])]))
-                        pxmy = float(data[my][1])
-                        pymy = float(data[my][2])
-                        pxen = float(data[en][1])
-                        pyen = float(data[en][2])
-                        pos.append(np.array([pxmy, pymy,
-                                             pxen, pyen,
-                                             pxen - pxmy,
-                                             pyen - pymy]))
+                        pos.append(poses[::2])
                         my_key.append(mv2.encode_keylist(keys[0][:-1]))
                         en_key.append(mv2.encode_keylist(keys[1][:-1]))
                         y1, y2, y3 = mv2.key_to_category(keys[0][-1], new=True)
