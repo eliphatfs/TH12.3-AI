@@ -13,7 +13,7 @@ import subprocess
 
 # Config for Auto Replay to Data
 AUTO = True
-BEGIN = 0
+BEGIN = 6
 REPLAY_PATH = r"D:\AI_DataSet\DATASET_REMI"
 EXE_PATH = r"D:\AI_DataSet\TH123\th123\th123.exe"
 # To be automatic, SWRSToys & ReplayDnD should be enabled
@@ -22,11 +22,14 @@ EXE_PATH = r"D:\AI_DataSet\TH123\th123\th123.exe"
 OUTPUT_PATH = "D:/AI_DataSet/DATASET_REMI_TXT"
 
 
-def replay_to_data():
+def replay_to_data(cancel_on_title_met=False):
     print("Wait For Battle Detection...")
     while (gu.fetch_status() not in [0x05, 0x0e]
             or gu.fetch_wincnt()[0] > 256
             or gu.fetch_wincnt()[1] > 256):
+        if gu.fetch_status() == 0x02 and cancel_on_title_met:
+            th123.terminate()
+            return
         time.sleep(0.5)
     print("Battle Detected!")
     gu.update_base()
@@ -104,13 +107,13 @@ if __name__ == "__main__":
             stinfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
             stinfo.wShowWindow = subprocess.SW_HIDE
             gu.update_proc()
-            subprocess.Popen([EXE_PATH, os.path.join(d[1], d[2])],
-                             startupinfo=stinfo)
-            print("Current:", d[0], d[2])
+            th123 = subprocess.Popen([EXE_PATH, os.path.join(d[1], d[2])],
+                                     startupinfo=stinfo)
+            print("Current:", d[0], d[2].encode("gbk", errors='ignore').decode('gbk'))
             while gu.hwnd == 0:
                 time.sleep(1.0)
                 gu.update_proc()
-            replay_to_data()
+            replay_to_data(True)
             while gu.hwnd != 0:
                 time.sleep(1.0)
                 gu.update_proc()
