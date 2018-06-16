@@ -12,6 +12,7 @@ import numpy as np
 import dx_keycode as dxk
 
 
+m = mv2.get_model()
 oldkeystate = [False for i in range(8)]
 keystate = [False for i in range(8)]  # WSADJKLs
 keysetting = [dxk.DIK_W,
@@ -64,7 +65,6 @@ def act(result, my=0):
 
 def play(my=0):
     en = 1 - my
-    m = mv2.get_model()
     gu.update_proc()
     m.load_weights("D:/FXTZ.dat")
     print("Wait For Battle Detection...")
