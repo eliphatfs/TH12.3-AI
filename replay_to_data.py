@@ -77,6 +77,9 @@ def replay_to_data(cancel_on_title_met=False):
     else:
         f.write("Interrupted Battle.")
     f.write("\n# P1 HP P1 Pos X P1 Pos Y P1 Key P1 Act; P2 etc.\n")
+    if len(data) == 0:
+        f.close()
+        return
     for x in range(0, len(data), 10):
         for i in range(x, x + 5):
             f.write(str(data[i]))
