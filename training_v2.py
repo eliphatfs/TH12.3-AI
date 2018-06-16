@@ -15,8 +15,7 @@ from keras import callbacks
 DATA_PATH = r"D:\AI_DataSet\DATASET_REMI_TXT"
 
 
-def data_loader(batch_size=1, my_char=6):
-    # Currently, batch_size > 1 will cause an error
+def data_loader(batch_size=32, my_char=6):
     char_act = []
     pos = []
     en_key = []
@@ -25,7 +24,11 @@ def data_loader(batch_size=1, my_char=6):
     while True:
         for r, d, f in os.walk(DATA_PATH):
             random.shuffle(f)
+            seq = [0] + [16] * 8 + [32] * 3 + [64] * 3 + [128] * 3 + [1]
+            st = 0
             for n in f:
+                st += 1
+                st %= len(seq)
                 file = open(os.path.join(r, n), "rt")
                 char_data = file.readline()
                 win_lose = file.readline()
@@ -51,11 +54,13 @@ def data_loader(batch_size=1, my_char=6):
                         break
                     keys[0].append(int(data[my][3]))
                     keys[1].append(int(data[en][3]))
-                    if len(keys[0]) > 120:
+                    if len(keys[0]) > 60:
                         keys[0] = keys[0][1:]
-                    if len(keys[1]) > 120:
+                    if len(keys[1]) > 60:
                         keys[1] = keys[1][1:]
-                    if len(keys[0]) > 3 and keys[0][-1] != keys[0][-2]:
+                    if (len(keys[0]) == 60
+                            and keys[0][-1] != keys[0][-2]
+                            and keys[0][-1] & seq[st] == seq[st]):
                         char_act.append(np.array([char_data[my],
                                                   int(data[my][4]),
                                                   char_data[en],
@@ -88,18 +93,18 @@ def data_loader(batch_size=1, my_char=6):
 def train():
     global model
     model = mv2.get_model()
-    model.compile("rmsprop",
+    model.compile("adadelta",
                   "categorical_crossentropy",
                   ["acc"])
     model.summary()
-    try:
+    '''try:
         model.load_weights("D:/FXTZ.dat")
     except Exception:
-        pass
-    callback = [callbacks.CSVLogger("training.csv", append=True),
+        pass'''
+    callback = [callbacks.CSVLogger("training.csv"),
                 callbacks.ModelCheckpoint("D:/FXTZ.dat",
                                           save_weights_only=True)]
-    model.fit_generator(data_loader(), 1000, 20,
+    model.fit_generator(data_loader(), 300, 40,
                         callbacks=callback,
                         validation_data=data_loader(),
                         validation_steps=25,

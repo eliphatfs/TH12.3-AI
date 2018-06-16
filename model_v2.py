@@ -39,18 +39,21 @@ def key_to_category(key, one_hot=False):
         return cjkld * 9 + cad * 3 + cws
 
 
-def encode_keylist(list_key, merge=3, one_hot=True):
+def encode_keylist(list_key, merge=2, one_hot=True):
     list_key = list_key.copy()
     tmp = []
     for i in range(len(list_key)):
         list_key[i] = key_to_category(list_key[i])
-    for i in range(merge):
+    for i in range(0, len(list_key), merge):
+        tmp.append(list_key[i])
+    list_key = tmp
+    '''for i in range(merge):
         for j in range(len(list_key)):
             if j > 0 and list_key[j] == list_key[j - 1]:
                 continue
             tmp.append(list_key[j])
         list_key = tmp
-        tmp = []
+        tmp = []'''
     if one_hot:
         for i in range(len(list_key)):
             list_key[i] = np.eye(N_CLASS)[list_key[i]]
@@ -59,36 +62,29 @@ def encode_keylist(list_key, merge=3, one_hot=True):
 
 def get_model():
     char_action = layers.Input(shape=[4])
-    # [Char1, Action1, Char2, Action2]
-    char_action_dnn = layers.Dense(128)(char_action)
-    char_action_dnn = layers.LeakyReLU()(char_action_dnn)
-    for _ in range(1):
-        char_action_dnn = layers.Dense(128)(char_action_dnn)
-        char_action_dnn = layers.LeakyReLU()(char_action_dnn)
+    repeated_action = layers.RepeatVector(30)(char_action)
+    dnn_action = layers.TimeDistributed(layers.Dense(45))(repeated_action)
+    dnn_action = layers.BatchNormalization()(dnn_action)
+    dnn_action = layers.Activation("tanh")(dnn_action)
 
     position = layers.Input(shape=[6])
-    # [MyPosX, MyPosY, EnPosX, EnPosY, DeltaPosX, DeltaPosY]
-    position_dnn = layers.Dense(128)(position)
-    position_dnn = layers.LeakyReLU()(position_dnn)
-    for _ in range(1):
-        position_dnn = layers.Dense(128)(position_dnn)
-        position_dnn = layers.LeakyReLU()(position_dnn)
+    repeated_position = layers.RepeatVector(30)(position)
+    dnn_pos = layers.TimeDistributed(layers.Dense(45))(repeated_position)
+    dnn_pos = layers.Activation("tanh")(dnn_pos)
 
-    enemy_key = layers.Input(shape=[None, 45])
-    enemy_key_rnn = layers.LSTM(128, recurrent_dropout=0.3)(enemy_key)
-
-    my_key = layers.Input(shape=[None, 45])
-    my_key_rnn = layers.LSTM(128, recurrent_dropout=0.3)(my_key)
-
-    final_merge = layers.Add()([char_action_dnn, position_dnn,
-                                enemy_key_rnn, my_key_rnn])
-    final_dnn = layers.Dense(128)(final_merge)
-    final_dnn = layers.LeakyReLU()(final_dnn)
-    final_dnn = layers.Dense(45)(final_dnn)
-    final_dnn = layers.Activation("softmax")(final_dnn)
+    enemy_key = layers.Input(shape=[30, 45])
+    my_key = layers.Input(shape=[30, 45])
+    concat = layers.Concatenate()([dnn_action, dnn_pos,
+                                   enemy_key, my_key])
+    flatten = layers.Flatten()(concat)
+    dense = layers.Dense(256, activation="tanh")(flatten)
+    dense = layers.Dense(256, activation="tanh")(dense)
+    dense = layers.Dense(128, activation="tanh")(dense)
+    dense = layers.Dense(128, activation="tanh")(dense)
+    dense_category = layers.Dense(45, activation='softmax')(dense)
     return keras.models.Model(inputs=[char_action,
                                       position,
                                       enemy_key,
                                       my_key],
-                              outputs=[final_dnn],
+                              outputs=[dense_category],
                               name="TH123AI")
