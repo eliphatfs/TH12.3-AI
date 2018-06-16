@@ -15,22 +15,23 @@ from keras import callbacks
 DATA_PATH = r"D:\AI_DataSet\DATASET_REMI_TXT"
 
 
-def data_loader(batch_size=8, my_char=6):
+def data_loader(batch_size=8, my_char=6, valid=False):
     char_act = []
     pos = []
     en_key = []
     my_key = []
-    Y1 = []
-    Y2 = []
-    Y3 = []
+    Y = []
     while True:
         for r, d, f in os.walk(DATA_PATH):
+            f = sorted(f)
+            if valid:
+                f = f[:len(f)//10]
+            else:
+                f = f[len(f)//10:]
             random.shuffle(f)
-            seq = [0] + [16] * 3 + [32, 64, 128, 1]
+            seq = [0, 16, 32, 64, 128]
             st = 0
             for n in f:
-                st += 1
-                st %= len(seq)
                 file = open(os.path.join(r, n), "rt")
                 char_data = file.readline()
                 win_lose = file.readline()
@@ -48,6 +49,7 @@ def data_loader(batch_size=8, my_char=6):
                 file.readline()
                 keys = [[], []]
                 poses = []
+                char_acts = []
                 line = file.readline()
                 while line != "":
                     data = line.split("; ")
@@ -65,41 +67,40 @@ def data_loader(batch_size=8, my_char=6):
                                            pxen, pyen,
                                            pxen - pxmy,
                                            pyen - pymy]))
-                    if len(keys[0]) > 90:
+                    char_acts.append(np.array([char_data[my],
+                                              int(data[my][4]) / 100.0,
+                                              char_data[en],
+                                              int(data[en][4]) / 100.0]))
+                    if len(keys[0]) > 31:
                         keys[0] = keys[0][1:]
-                    if len(keys[1]) > 90:
+                    if len(keys[1]) > 31:
                         keys[1] = keys[1][1:]
-                    if len(poses) > 90:
+                    if len(poses) > 30:
                         poses = poses[1:]
-                    if (len(keys[0]) == 90
+                    if len(char_acts) > 30:
+                        char_acts = char_acts[1:]
+                    if (len(keys[0]) == 31
                             and keys[0][-1] != keys[0][-2]
-                            and keys[0][-1] & seq[st] == seq[st]):
-                        char_act.append(np.array([char_data[my],
-                                                  int(data[my][4]),
-                                                  char_data[en],
-                                                  int(data[en][4])]))
-                        pos.append(poses[::2])
+                            and keys[0][-1] & 240 == seq[st]):
+                        st += 1
+                        st %= len(seq)
+                        char_act.append(char_acts.copy())
+                        pos.append(poses[-1])
                         my_key.append(mv2.encode_keylist(keys[0][:-1]))
                         en_key.append(mv2.encode_keylist(keys[1][:-1]))
-                        y1, y2, y3 = mv2.key_to_category(keys[0][-1], new=True)
-                        Y1.append(y1)
-                        Y2.append(y2)
-                        Y3.append(y3)
-                        if len(Y1) == batch_size:
+                        y = mv2.key_to_category(keys[0][-1])
+                        Y.append(y)
+                        if len(Y) == batch_size:
                             yield ([np.array(char_act),
                                     np.array(pos),
                                     np.array(en_key),
                                     np.array(my_key)],
-                                   [np.array(Y1),
-                                    np.array(Y2),
-                                    np.array(Y3)])
+                                   [np.array(Y)])
                             char_act = []
                             pos = []
                             en_key = []
                             my_key = []
-                            Y1 = []
-                            Y2 = []
-                            Y3 = []
+                            Y = []
                     line = file.readline()
                 file.close()
 
@@ -107,7 +108,7 @@ def data_loader(batch_size=8, my_char=6):
 def train():
     global model
     model = mv2.get_model()
-    model.compile("adadelta",
+    model.compile("adam",
                   "categorical_crossentropy",
                   ["acc"])
     model.summary()
@@ -117,10 +118,11 @@ def train():
         pass'''
     callback = [callbacks.CSVLogger("training.csv"),
                 callbacks.ModelCheckpoint("D:/FXTZ.dat",
-                                          save_weights_only=True)]
+                                          save_weights_only=True,
+                                          save_best_only=True)]
     model.fit_generator(data_loader(), 300, 40,
                         callbacks=callback,
-                        validation_data=data_loader(),
+                        validation_data=data_loader(valid=True),
                         validation_steps=25,
                         shuffle=False)
 

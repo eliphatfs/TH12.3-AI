@@ -36,7 +36,9 @@ def act(result, my=0):
     last_d = result % 3
     for i in range(0, 2):
         keystate[i] = last_d == i + 1
-    if first_d == 0 and last_d != 1:
+    print(first_d, next_d, last_d)
+    if ((first_d == 0 and last_d != 1)
+            or (first_d == 4 and next_d == 0)):
         if gu.fetch_posx()[1 - my] - gu.fetch_posx()[my] > 0:
             oldkeystate[2] = False
             keystate[2] = True
@@ -76,6 +78,7 @@ def play(my=0):
     my_key = []
     keys = [[], []]
     poses = []
+    char_acts = []
     oldhp = [10000, 10000]
     while gu.fetch_hp()[0] > 0 and gu.fetch_hp()[1] > 0:
         '''if (oldhp[en] < gu.fetch_hp()[en]
@@ -88,7 +91,7 @@ def play(my=0):
         char_data = gu.fetch_char()
         px = gu.fetch_posx()
         py = gu.fetch_posy()
-        if abs(px[en] - px[my]) > 0.4:
+        if abs(px[en] - px[my]) > 0.36:
             if px[en] < px[my]:
                 act(39, my)
             else:
@@ -99,43 +102,53 @@ def play(my=0):
                                    px[en], py[en],
                                    px[en] - px[my],
                                    py[en] - py[my]]))
-            time.sleep(0.1)
+            char_acts.append(np.array([char_data[my],
+                             gu.fetch_action()[my] / 100.0,
+                             char_data[en],
+                             gu.fetch_action()[en] / 100.0]))
+            time.sleep(0.033)
             continue
+        time_begin = time.time()
         keys[0].append(gu.fetch_operation()[my])
         keys[1].append(gu.fetch_operation()[en])
         poses.append(np.array([px[my], py[my],
                                px[en], py[en],
                                px[en] - px[my],
                                py[en] - py[my]]))
-        while len(keys[0]) > 45:
-            keys[0] = keys[0][-45:]
-        while len(keys[1]) > 45:
-            keys[1] = keys[1][-45:]
-        while len(poses) > 45:
-            poses = poses[-45:]
-        if len(keys[1]) < 45:
+        char_acts.append(np.array([char_data[my],
+                         gu.fetch_action()[my] / 100.0,
+                         char_data[en],
+                         gu.fetch_action()[en] / 100.0]))
+        while len(keys[0]) > 30:
+            keys[0] = keys[0][-30:]
+        while len(keys[1]) > 30:
+            keys[1] = keys[1][-30:]
+        while len(poses) > 30:
+            poses = poses[-30:]
+        while len(char_acts) > 30:
+            char_acts = char_acts[-30:]
+        if len(keys[1]) < 30:
             continue
-        char_act.append(np.array([char_data[my],
-                        gu.fetch_action()[my],
-                        char_data[en],
-                        gu.fetch_action()[en]]))
-        pos.append(poses)
+        char_act.append(char_acts)
+        pos.append(poses[-1])
         my_key.append(mv2.encode_keylist(keys[0], merge=1))
         en_key.append(mv2.encode_keylist(keys[1], merge=1))
         Y = m.predict([np.array(char_act),
                        np.array(pos),
                        np.array(en_key),
-                       np.array(my_key)], batch_size=1)
+                       np.array(my_key)], batch_size=1)[0]
         char_act = []
         pos = []
         en_key = []
         my_key = []
-        category = np.argmax(Y[0]) * 9 + np.argmax(Y[1]) * 3 + np.argmax(Y[2])
-        category1 = np.random.choice([x for x in range(5)], p=Y[0][0])
+        category = np.argmax(Y)
+        '''category1 = np.random.choice([x for x in range(5)], p=Y[0][0])
         category2 = np.random.choice([x for x in range(3)], p=Y[1][0])
         category3 = np.random.choice([x for x in range(3)], p=Y[2][0])
-        category = category1 * 9 + category2 * 3 + category3
-        time.sleep(0.02)
+        category = category1 * 9 + category2 * 3 + category3'''
+        category = np.random.choice([x for x in range(45)], p=Y)
+        if time_begin + 0.032 > time.time():
+            time.sleep(time_begin + 0.033 - time.time())
         act(category, my)
 
 
