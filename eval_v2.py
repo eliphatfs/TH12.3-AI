@@ -146,7 +146,7 @@ def play(my=0):
         category2 = np.random.choice([x for x in range(3)], p=Y[1][0])
         category3 = np.random.choice([x for x in range(3)], p=Y[2][0])
         category = category1 * 9 + category2 * 3 + category3'''
-        category = np.random.choice([x for x in range(45)], p=Y)
+        # category = np.random.choice([x for x in range(45)], p=Y)
         if time_begin + 0.032 > time.time():
             time.sleep(time_begin + 0.033 - time.time())
         act(category, my)

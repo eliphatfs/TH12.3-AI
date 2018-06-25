@@ -10,6 +10,7 @@ import os
 import numpy as np
 import random
 from keras import callbacks
+import tensorflow as tf
 
 
 DATA_PATH = r"D:\AI_DataSet\DATASET_REMI_TXT"
@@ -128,4 +129,5 @@ def train():
 
 
 if __name__ == "__main__":
-    train()
+    with tf.device('/cpu:0'):
+        train()
