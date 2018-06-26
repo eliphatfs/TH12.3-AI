@@ -89,7 +89,7 @@ def wavenet_block(n_atrous_filters, atrous_filter_size, atrous_rate):
                                     activation='sigmoid')(input_)
         merged = layers.Multiply()([tanh_out, sigmoid_out])
         merged = layers.BatchNormalization()(merged)
-        skip_out = layers.Conv1D(24, 1)(merged)
+        skip_out = layers.Conv1D(64, 1)(merged)
         skip_out = layers.LeakyReLU()(skip_out)
         skip_out = layers.BatchNormalization()(skip_out)
         out = layers.Add()([skip_out, residual])
@@ -99,8 +99,7 @@ def wavenet_block(n_atrous_filters, atrous_filter_size, atrous_rate):
 
 def get_model():
     char_action = layers.Input(shape=[30, 4])
-    char_action_a1 = attention_3d_block(char_action)
-    char_action_a2 = attention_3d_block(char_action)
+    char_action_a = attention_3d_block(char_action)
 
     position = layers.Input(shape=[6])
     position_r = layers.RepeatVector(30)(position)
@@ -110,61 +109,25 @@ def get_model():
 
     my_key = layers.Input(shape=[30, 45])
     my_key_a = attention_3d_block(my_key)
-
-    # Part 1
-    concat = layers.Concatenate()([char_action_a1, position_r,
-                                   enemy_key_a])
-    gate = layers.Dense(55, activation="sigmoid")(concat)
+    concat = layers.Concatenate()([char_action_a, position_r,
+                                   enemy_key_a, my_key_a])
+    gate = layers.Dense(100, activation="sigmoid")(concat)
     concat = layers.Multiply()([gate, concat])
     '''flatten = layers.Flatten()(concat)
     dense = layers.Dense(128, activation="tanh")(flatten)
     c = layers.Dense(128, activation="tanh")(dense)
     c = layers.Dense(128, activation="tanh")(c)'''
-    first = layers.Conv1D(24, 5, padding='causal', activation='tanh')(concat)
-    A, B = wavenet_block(24, 2, 1)(first)
+    first = conv1d_block(64, 5, padding='causal', activation='tanh')(concat)
+    A, B = wavenet_block(64, 2, 1)(first)
     skip_connections = [B]
     for i in range(1, 12):
-        A, B = wavenet_block(24, 3, 2 ** (i % 3))(A)
+        A, B = wavenet_block(64, 3, 2 ** (i % 3))(A)
         skip_connections.append(B)
     net = layers.Add()(skip_connections)
     net = layers.LeakyReLU()(net)
-    net = layers.Conv1D(8, 1)(net)
-    net = layers.Activation('relu')(net)
-    net = layers.Flatten()(net)
-
-    # Part 2
-    d_pos = layers.Dense(64)(position)
-    d_pos = layers.LeakyReLU()(d_pos)
-    d_pos = layers.Dense(240, activation='relu')(d_pos)
-
-    # Part 3
-    my = conv1d_block(16, 3, padding='causal', dilation_rate=1)(my_key_a)
-    my = conv1d_block(16, 3, padding='causal', dilation_rate=2)(my)
-    my = conv1d_block(16, 3, padding='causal', dilation_rate=4)(my)
-    my = conv1d_block(16, 3, padding='causal', dilation_rate=8)(my)
-    my = conv1d_block(16, 3, padding='causal', dilation_rate=1)(my)
-    my = conv1d_block(16, 3, padding='causal', dilation_rate=2)(my)
-    my = conv1d_block(16, 3, padding='causal', dilation_rate=4)(my)
-    my = conv1d_block(16, 3, padding='causal', dilation_rate=8)(my)
-    my = layers.Conv1D(8, 1)(my)
-    my = layers.Activation('relu')(my)
-    my = layers.Flatten()(my)
-
-    char_action_a2 = layers.Flatten()(char_action_a2)
-    decider = layers.Dense(64)(char_action_a2)
-    decider = layers.LeakyReLU()(decider)
-    decider = layers.Dense(64)(decider)
-    decider = layers.LeakyReLU()(decider)
-    decider = layers.Dense(3, activation='softmax')(decider)
-
-    d_pos = layers.Reshape([-1, 1])(d_pos)
-    net = layers.Reshape([-1, 1])(net)
-    my = layers.Reshape([-1, 1])(my)
-    c = layers.Concatenate()([d_pos, net, my])
-    c = layers.Multiply()([c, decider])
-    c = layers.Permute([2, 1])(c)
-    c = layers.GlobalAveragePooling1D()(c)
-
+    net = conv1d_block(12, 1)(net)
+    net = layers.LeakyReLU()(net)
+    c = layers.Flatten()(net)
     dense_category = layers.Dense(45, activation='softmax')(c)
     return keras.models.Model(inputs=[char_action,
                                       position,

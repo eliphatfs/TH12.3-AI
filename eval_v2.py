@@ -68,8 +68,8 @@ def play(my=0):
     gu.update_proc()
     m.load_weights("D:/FXTZ.dat")
     print("Wait For Battle Detection...")
-    while (gu.fetch_status() not in [0x05, 0x0e]):
-        time.sleep(0.5)
+    # while (gu.fetch_status() not in [0x05, 0x0e]):
+    #     time.sleep(0.5)
     print("Battle Detected!")
     gu.update_base()
     char_act = []
@@ -146,7 +146,7 @@ def play(my=0):
         category2 = np.random.choice([x for x in range(3)], p=Y[1][0])
         category3 = np.random.choice([x for x in range(3)], p=Y[2][0])
         category = category1 * 9 + category2 * 3 + category3'''
-        # category = np.random.choice([x for x in range(45)], p=Y)
+        category = np.random.choice([x for x in range(45)], p=Y)
         if time_begin + 0.032 > time.time():
             time.sleep(time_begin + 0.033 - time.time())
         act(category, my)
