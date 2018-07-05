@@ -10,6 +10,7 @@ import game_utils as gu
 import time
 import numpy as np
 import dx_keycode as dxk
+import tensorflow as tf
 
 
 m = mv2.get_model()
@@ -23,9 +24,22 @@ keysetting = [dxk.DIK_W,
               dxk.DIK_K,
               dxk.DIK_L,
               dxk.DIK_SPACE]
+'''keysetting = [dxk.DIK_Z,
+              dxk.DIK_X,
+              dxk.DIK_C,
+              dxk.DIK_V,
+              dxk.DIK_B,
+              dxk.DIK_N,
+              dxk.DIK_M,
+              dxk.DIK_P]'''
 
 
 def act(result, my=0):
+    dis = abs(gu.fetch_posx()[my] - gu.fetch_posx()[1 - my])
+    if dis < 0.24 and result // 9 == 3:
+        result = 18 + (result % 9)
+    if dis < 0.12 and (result // 9 == 2 or result // 9 == 3):
+        result = 9 + (result % 9)
     for i in range(8):
         oldkeystate[i] = keystate[i]
     first_d = result // 9
@@ -68,8 +82,8 @@ def play(my=0):
     gu.update_proc()
     m.load_weights("D:/FXTZ.dat")
     print("Wait For Battle Detection...")
-    # while (gu.fetch_status() not in [0x05, 0x0e]):
-    #     time.sleep(0.5)
+    while (gu.fetch_status() not in [0x05, 0x0d, 0x0e, 0x08, 0x09]):
+        time.sleep(0.5)
     print("Battle Detected!")
     gu.update_base()
     char_act = []
@@ -91,7 +105,7 @@ def play(my=0):
         char_data = gu.fetch_char()
         px = gu.fetch_posx()
         py = gu.fetch_posy()
-        if abs(px[en] - px[my]) > 0.36:
+        '''if abs(px[en] - px[my]) > 0.4:
             if px[en] < px[my]:
                 act(39, my)
             else:
@@ -107,7 +121,7 @@ def play(my=0):
                              char_data[en],
                              gu.fetch_action()[en] / 100.0]))
             time.sleep(0.033)
-            continue
+            continue'''
         time_begin = time.time()
         keys[0].append(gu.fetch_operation()[my])
         keys[1].append(gu.fetch_operation()[en])
@@ -115,9 +129,7 @@ def play(my=0):
                                px[en], py[en],
                                px[en] - px[my],
                                py[en] - py[my]]))
-        char_acts.append(np.array([char_data[my],
-                         gu.fetch_action()[my] / 100.0,
-                         char_data[en],
+        char_acts.append(np.array([char_data[en],
                          gu.fetch_action()[en] / 100.0]))
         while len(keys[0]) > 30:
             keys[0] = keys[0][-30:]
@@ -129,14 +141,12 @@ def play(my=0):
             char_acts = char_acts[-30:]
         if len(keys[1]) < 30:
             continue
-        char_act.append(char_acts)
+        char_act.append(char_acts[-1])
         pos.append(poses[-1])
         my_key.append(mv2.encode_keylist(keys[0], merge=1))
         en_key.append(mv2.encode_keylist(keys[1], merge=1))
         Y = m.predict([np.array(char_act),
-                       np.array(pos),
-                       np.array(en_key),
-                       np.array(my_key)], batch_size=1)[0]
+                       np.array(pos)], batch_size=1)[0]
         char_act = []
         pos = []
         en_key = []
@@ -154,4 +164,5 @@ def play(my=0):
 
 if __name__ == "__main__":
     while 1:
-        play()
+        with tf.device('/cpu:0'):
+            play()

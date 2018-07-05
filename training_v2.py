@@ -16,7 +16,7 @@ import tensorflow as tf
 DATA_PATH = r"D:\AI_DataSet\DATASET_REMI_TXT"
 
 
-def data_loader(batch_size=8, my_char=6, valid=False):
+def data_loader(batch_size=8, my_char=7, valid=False):
     char_act = []
     pos = []
     en_key = []
@@ -68,9 +68,7 @@ def data_loader(batch_size=8, my_char=6, valid=False):
                                            pxen, pyen,
                                            pxen - pxmy,
                                            pyen - pymy]))
-                    char_acts.append(np.array([char_data[my],
-                                              int(data[my][4]) / 100.0,
-                                              char_data[en],
+                    char_acts.append(np.array([char_data[en],
                                               int(data[en][4]) / 100.0]))
                     if len(keys[0]) > 31:
                         keys[0] = keys[0][1:]
@@ -85,7 +83,7 @@ def data_loader(batch_size=8, my_char=6, valid=False):
                             and keys[0][-1] & 240 == seq[st]):
                         st += 1
                         st %= len(seq)
-                        char_act.append(char_acts.copy())
+                        char_act.append(char_acts[-1])
                         pos.append(poses[-1])
                         my_key.append(mv2.encode_keylist(keys[0][:-1]))
                         en_key.append(mv2.encode_keylist(keys[1][:-1]))
@@ -93,9 +91,7 @@ def data_loader(batch_size=8, my_char=6, valid=False):
                         Y.append(y)
                         if len(Y) == batch_size:
                             yield ([np.array(char_act),
-                                    np.array(pos),
-                                    np.array(en_key),
-                                    np.array(my_key)],
+                                    np.array(pos)],
                                    [np.array(Y)])
                             char_act = []
                             pos = []
