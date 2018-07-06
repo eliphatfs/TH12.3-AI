@@ -70,6 +70,7 @@ def act(result, my=0):
             keystate[1] = True
             oldkeystate[0] = True
             keystate[0] = False
+    # gu.write_operation(result, my)
     for i in range(8):
         if (not oldkeystate[i]) and keystate[i]:
             gu.PressKey(keysetting[i])
@@ -78,9 +79,10 @@ def act(result, my=0):
 
 
 def play(my=0):
+    global Y
     en = 1 - my
     gu.update_proc()
-    m.load_weights("D:/FXTZ.dat")
+    m.load_weights("D:/FXTZ.2.dat")
     print("Wait For Battle Detection...")
     while (gu.fetch_status() not in [0x05, 0x0d, 0x0e, 0x08, 0x09]):
         time.sleep(0.5)
@@ -142,7 +144,7 @@ def play(my=0):
         if len(keys[1]) < 30:
             continue
         char_act.append(char_acts[-1])
-        pos.append(poses[-1])
+        pos.append(poses.copy())
         my_key.append(mv2.encode_keylist(keys[0], merge=1))
         en_key.append(mv2.encode_keylist(keys[1], merge=1))
         Y = m.predict([np.array(char_act),
@@ -151,15 +153,25 @@ def play(my=0):
         pos = []
         en_key = []
         my_key = []
-        category = np.argmax(Y)
+        for i in range(10):
+            category = np.random.choice([x for x in range(45)], p=Y[i])
+            keys[0].append(gu.fetch_operation()[my])
+            keys[1].append(gu.fetch_operation()[en])
+            poses.append(np.array([px[my], py[my],
+                                   px[en], py[en],
+                                   px[en] - px[my],
+                                   py[en] - py[my]]))
+            char_acts.append(np.array([char_data[en],
+                                       gu.fetch_action()[en] / 100.0]))
+            act(category, my)
+            if time_begin + 0.032 > time.time():
+                time.sleep(time_begin + 0.033 - time.time())
+            time_begin = time.time()
         '''category1 = np.random.choice([x for x in range(5)], p=Y[0][0])
         category2 = np.random.choice([x for x in range(3)], p=Y[1][0])
         category3 = np.random.choice([x for x in range(3)], p=Y[2][0])
         category = category1 * 9 + category2 * 3 + category3'''
-        category = np.random.choice([x for x in range(45)], p=Y)
-        if time_begin + 0.032 > time.time():
-            time.sleep(time_begin + 0.033 - time.time())
-        act(category, my)
+        # category = np.random.choice([x for x in range(45)], p=Y)
 
 
 if __name__ == "__main__":

@@ -70,24 +70,24 @@ def data_loader(batch_size=8, my_char=7, valid=False):
                                            pyen - pymy]))
                     char_acts.append(np.array([char_data[en],
                                               int(data[en][4]) / 100.0]))
-                    if len(keys[0]) > 31:
+                    if len(keys[0]) > 60:
                         keys[0] = keys[0][1:]
-                    if len(keys[1]) > 31:
+                    if len(keys[1]) > 60:
                         keys[1] = keys[1][1:]
-                    if len(poses) > 30:
+                    if len(poses) > 60:
                         poses = poses[1:]
-                    if len(char_acts) > 30:
+                    if len(char_acts) > 60:
                         char_acts = char_acts[1:]
-                    if (len(keys[0]) == 31
+                    if (len(keys[0]) == 60
                             and keys[0][-1] != keys[0][-2]
-                            and keys[0][-1] & 240 == seq[st]):
+                            and keys[0][30] & 240 == seq[st]):
                         st += 1
                         st %= len(seq)
-                        char_act.append(char_acts[-1])
-                        pos.append(poses[-1])
+                        char_act.append(char_acts[29])
+                        pos.append(poses[:30])
                         my_key.append(mv2.encode_keylist(keys[0][:-1]))
                         en_key.append(mv2.encode_keylist(keys[1][:-1]))
-                        y = mv2.key_to_category(keys[0][-1])
+                        y = mv2.encode_keylist(keys[0][30:])
                         Y.append(y)
                         if len(Y) == batch_size:
                             yield ([np.array(char_act),
