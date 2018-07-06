@@ -87,6 +87,7 @@ def ReleaseKey(hexKeyCode):
 
 kernel32 = ctypes.windll.LoadLibrary("kernel32.dll")
 ReadProcessMemory = kernel32.ReadProcessMemory
+WriteProcessMemory = kernel32.WriteProcessMemory
 OpenProcess = kernel32.OpenProcess
 _bytes = ctypes.c_ulong(0)
 _root = ctypes.c_uint(0)
@@ -257,6 +258,41 @@ def fetch_char():
                       4,
                       ctypes.byref(_bytes))
     return _bytedata[0].value, _bytedata[1].value
+
+
+def write_operation(operation, which=0):
+    first_d = operation // 9
+    next_d = (operation % 9) // 3
+    last_d = operation % 3
+
+    _input.lr = 0
+    _input.ud = 0
+    _input.a = 0
+    _input.b = 0
+    _input.c = 0
+    _input.d = 0
+    if next_d == 1:
+        _input.lr = -1
+    elif next_d == 2:
+        _input.lr = 1
+    if last_d == 1:
+        _input.ud = -1
+    elif last_d == 2:
+        _input.ud = 1
+    if first_d == 1:
+        _input.a = 1
+    elif first_d == 2:
+        _input.b = 1
+    elif first_d == 31:
+        _input.c = 1
+    elif first_d == 4:
+        _input.d = 1
+    WriteProcessMemory(proc,
+                       (_baseaddr1.value if which == 0
+                        else _baseaddr2.value) + 0x754,
+                       ctypes.byref(_input),
+                       32,
+                       ctypes.byref(_bytes))
 
 
 def fetch_operation():
