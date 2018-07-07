@@ -388,14 +388,13 @@ def press_key(code):
         if type(c) == list:
             for cc in c:
                 PressKey(cc)
-            time.sleep(0.03)
+            time.sleep(0.02)
             for cc in c:
                 ReleaseKey(cc)
         else:
             PressKey(c)
-            time.sleep(0.03)
+            time.sleep(0.02)
             ReleaseKey(c)
-        time.sleep(0.03)
         print(c)
 
 
