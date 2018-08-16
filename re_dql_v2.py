@@ -306,7 +306,7 @@ class TH123DllTrainEnv(rl.core.Env):
                                                    0.99,
                                                    0.1,
                                                    0.05,
-                                                   1000000)
+                                                   10000000)
         self.smod1 = self.new_model()
         self.smod1.summary()
         self.smod2 = self.new_model()
@@ -328,7 +328,7 @@ class TH123DllTrainEnv(rl.core.Env):
                                      batch_size=BATCH,
                                      nb_actions=45,
                                      policy=self.spol,
-                                     memory=self.smem1,
+                                     memory=self.smem2,
                                      nb_steps_warmup=18000,
                                      gamma=0.998,
                                      target_model_update=50000,
@@ -338,9 +338,9 @@ class TH123DllTrainEnv(rl.core.Env):
 
         self.fit(dq1, dq2, env,
                  callbacks=[rl.callbacks.FileLogger(LOG_PATH, interval=1)],
-                 nb_steps=20000000,
+                 nb_steps=200000000,
                  log_interval=1000,
-                 action_repetition=5)
+                 action_repetition=6)
 
 
 class ModelCheckpoint(rl.callbacks.Callback):
@@ -431,12 +431,17 @@ class TH123EvalEnv(TH123DllTrainEnv):
         import game_utils as gu
         self.act(action)
         time.sleep(0.012)
+        gu.update_base()
         pos1x, pos2x = gu.fetch_posx()
         pos1y, pos2y = gu.fetch_posy()
         char1, char2 = gu.fetch_char()
         key1, key2 = gu.fetch_operation()
         hp1, hp2 = gu.fetch_hp()
         wid, wcn = gu.fetch_weather()
+        print([pos1x, pos2y,
+               pos2x, pos2y, char1, char2,
+               self.key_to_category(key1), self.key_to_category(key2),
+               hp1, hp2, wid, wcn])
         return [pos1x, pos2y,
                 pos2x, pos2y, char1, char2,
                 self.key_to_category(key1), self.key_to_category(key2),
@@ -477,7 +482,7 @@ class TH123EvalEnv(TH123DllTrainEnv):
                                      train_interval=8)
         dqn.compile(keras.optimizers.Adam())
         dqn.test(self,
-                 action_repetition=5)
+                 action_repetition=6)
 
 
 if __name__ == "__main__":
