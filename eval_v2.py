@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Sun Jun 17 10:22:12 2018
-
 @author: 北海若
 """
 
@@ -70,7 +69,6 @@ def act(result, my=0):
             keystate[1] = True
             oldkeystate[0] = True
             keystate[0] = False
-    # gu.write_operation(result, my)
     for i in range(8):
         if (not oldkeystate[i]) and keystate[i]:
             gu.PressKey(keysetting[i])
@@ -79,13 +77,25 @@ def act(result, my=0):
 
 
 def play(my=0):
-    global Y
     en = 1 - my
     gu.update_proc()
-    m.load_weights("D:/FXTZ.2.dat")
+    m.load_weights("D:/FXTZ.uu.dat")
     print("Wait For Battle Detection...")
-    while (gu.fetch_status() not in [0x05, 0x0d, 0x0e, 0x08, 0x09]):
-        time.sleep(0.5)
+    if (gu.fetch_status() not in [0x05, 0x0d, 0x0e, 0x09]):
+        while (gu.fetch_status() not in [0x03, 0x08]):
+            gu.press_key([dxk.DIK_Z])
+            time.sleep(1)
+        gu.update_base()
+        while gu.fetch_char()[0] != 7:
+            gu.press_key([dxk.DIK_LEFT])
+            time.sleep(0.15)
+        gu.press_key([dxk.DIK_Z])
+        time.sleep(1)
+        gu.press_key([dxk.DIK_Z])
+        time.sleep(1)
+    while (gu.fetch_status() not in [0x05, 0x0d, 0x0e, 0x09]):
+        time.sleep(0.3)
+        gu.press_key([dxk.DIK_Z])
     print("Battle Detected!")
     gu.update_base()
     char_act = []
@@ -107,7 +117,7 @@ def play(my=0):
         char_data = gu.fetch_char()
         px = gu.fetch_posx()
         py = gu.fetch_posy()
-        '''if abs(px[en] - px[my]) > 0.4:
+        if abs(px[en] - px[my]) > 0.4:
             if px[en] < px[my]:
                 act(39, my)
             else:
@@ -123,7 +133,7 @@ def play(my=0):
                              char_data[en],
                              gu.fetch_action()[en] / 100.0]))
             time.sleep(0.033)
-            continue'''
+            continue
         time_begin = time.time()
         keys[0].append(gu.fetch_operation()[my])
         keys[1].append(gu.fetch_operation()[en])
@@ -144,7 +154,7 @@ def play(my=0):
         if len(keys[1]) < 30:
             continue
         char_act.append(char_acts[-1])
-        pos.append(poses.copy())
+        pos.append(poses[-1])
         my_key.append(mv2.encode_keylist(keys[0], merge=1))
         en_key.append(mv2.encode_keylist(keys[1], merge=1))
         Y = m.predict([np.array(char_act),
@@ -153,25 +163,15 @@ def play(my=0):
         pos = []
         en_key = []
         my_key = []
-        for i in range(10):
-            category = np.random.choice([x for x in range(45)], p=Y[i])
-            keys[0].append(gu.fetch_operation()[my])
-            keys[1].append(gu.fetch_operation()[en])
-            poses.append(np.array([px[my], py[my],
-                                   px[en], py[en],
-                                   px[en] - px[my],
-                                   py[en] - py[my]]))
-            char_acts.append(np.array([char_data[en],
-                                       gu.fetch_action()[en] / 100.0]))
-            act(category, my)
-            if time_begin + 0.032 > time.time():
-                time.sleep(time_begin + 0.033 - time.time())
-            time_begin = time.time()
+        category = np.argmax(Y)
         '''category1 = np.random.choice([x for x in range(5)], p=Y[0][0])
         category2 = np.random.choice([x for x in range(3)], p=Y[1][0])
         category3 = np.random.choice([x for x in range(3)], p=Y[2][0])
         category = category1 * 9 + category2 * 3 + category3'''
-        # category = np.random.choice([x for x in range(45)], p=Y)
+        category = np.random.choice([x for x in range(45)], p=Y)
+        if time_begin + 0.032 > time.time():
+            time.sleep(time_begin + 0.033 - time.time())
+        act(category, my)
 
 
 if __name__ == "__main__":

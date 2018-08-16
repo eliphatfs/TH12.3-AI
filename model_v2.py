@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Sun Jun 17 07:54:53 2018
-
 @author: 北海若
 """
 
@@ -100,20 +99,18 @@ def wavenet_block(n_atrous_filters, atrous_filter_size, atrous_rate):
 def get_model():
     char_action = layers.Input(shape=[2])
     char_action_r = layers.RepeatVector(30)(char_action)
-    char_action_r = attention_3d_block(char_action_r)
 
-    position = layers.Input(shape=[30, 6])
-    position_a = attention_3d_block(position)
-    # position_r = layers.RepeatVector(30)(position)
+    position = layers.Input(shape=[6])
+    position_r = layers.RepeatVector(30)(position)
 
     # enemy_key = layers.Input(shape=[30, 45])
     # enemy_key_a = attention_3d_block(enemy_key)
 
     # my_key = layers.Input(shape=[30, 45])
     # my_key_a = attention_3d_block(my_key)
-    concat = layers.Concatenate()([char_action_r, position_a])
-    # gate = layers.Dense(8, activation="sigmoid")(concat)
-    # concat = layers.Multiply()([gate, concat])
+    concat = layers.Concatenate()([char_action_r, position_r])
+    gate = layers.Dense(8, activation="sigmoid")(concat)
+    concat = layers.Multiply()([gate, concat])
     '''flatten = layers.Flatten()(concat)
     dense = layers.Dense(128, activation="tanh")(flatten)
     c = layers.Dense(128, activation="tanh")(dense)
@@ -126,9 +123,10 @@ def get_model():
         skip_connections.append(B)
     net = layers.Add()(skip_connections)
     net = layers.LeakyReLU()(net)
-    net = conv1d_block(45, 1)(net)
-    net = layers.Activation('relu')(net)
-    dense_category = layers.Activation('softmax')(net)
+    net = conv1d_block(16, 1)(net)
+    net = layers.LeakyReLU()(net)
+    c = layers.Flatten()(net)
+    dense_category = layers.Dense(45, activation='softmax')(c)
     return keras.models.Model(inputs=[char_action,
                                       position],
                               outputs=[dense_category],
