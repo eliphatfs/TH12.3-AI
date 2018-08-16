@@ -96,6 +96,7 @@ _baseaddr2 = ctypes.c_uint(0)
 _bytedata = [ctypes.c_long(0) for i in range(8)]
 _chardata = [ctypes.c_byte(0) for i in range(8)]
 _shortdata = [ctypes.c_short(0) for i in range(8)]
+_floatdata = [ctypes.c_float(0) for i in range(8)]
 _input = POperation()
 hwnd = 0
 
@@ -162,44 +163,59 @@ def fetch_posx():
     """
     Returns
     -------------
-    (1P Pos X, 2P Pos X) where values are mapped to [0, 1],
+    (1P Pos X, 2P Pos X) where values are read from the game,
     Linear, with an absolute error of around 0.01.
     """
     ReadProcessMemory(proc,
                       _baseaddr1.value + 0xEC,
-                      ctypes.byref(_bytedata[0]),
+                      ctypes.byref(_floatdata[0]),
                       4,
                       ctypes.byref(_bytes))
     ReadProcessMemory(proc,
                       _baseaddr2.value + 0xEC,
-                      ctypes.byref(_bytedata[1]),
+                      ctypes.byref(_floatdata[1]),
                       4,
                       ctypes.byref(_bytes))
-    norm_pos1 = normalize_posx(_bytedata[0].value)
-    norm_pos2 = normalize_posx(_bytedata[1].value)
-    return norm_pos1, norm_pos2
+    return _floatdata[0].value, _floatdata[1].value
 
 
 def fetch_posy():
     """
     Returns
     -------------
-    (1P Pos Y, 2P Pos Y) where values are mapped to [0, 1],
+    (1P Pos Y, 2P Pos Y) where values are read from the game,
     Linear, with an absolute error of around 0.01.
     """
     ReadProcessMemory(proc,
                       _baseaddr1.value + 0xF0,
-                      ctypes.byref(_bytedata[0]),
+                      ctypes.byref(_floatdata[0]),
                       4,
                       ctypes.byref(_bytes))
     ReadProcessMemory(proc,
                       _baseaddr2.value + 0xF0,
+                      ctypes.byref(_floatdata[1]),
+                      4,
+                      ctypes.byref(_bytes))
+    return _floatdata[0].value, _floatdata[1].value
+
+
+def fetch_weather():
+    """
+    Returns
+    -------------
+    Integer Tuple (Weather ID, Weather Count)
+    """
+    ReadProcessMemory(proc,
+                      0x008841A0,
+                      ctypes.byref(_bytedata[0]),
+                      4,
+                      ctypes.byref(_bytes))
+    ReadProcessMemory(proc,
+                      0x008841AC,
                       ctypes.byref(_bytedata[1]),
                       4,
                       ctypes.byref(_bytes))
-    norm_pos1 = normalize_posy(_bytedata[0].value)
-    norm_pos2 = normalize_posy(_bytedata[1].value)
-    return norm_pos1, norm_pos2
+    return _bytedata[0].value, _bytedata[1].value
 
 
 def fetch_hp():
@@ -283,7 +299,7 @@ def write_operation(operation, which=0):
         _input.a = 1
     elif first_d == 2:
         _input.b = 1
-    elif first_d == 31:
+    elif first_d == 3:
         _input.c = 1
     elif first_d == 4:
         _input.d = 1
