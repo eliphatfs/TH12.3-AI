@@ -6,6 +6,7 @@ Created on Wed Aug 15 13:14:09 2018
 """
 
 import keras
+from keras import layers
 import rl.core
 import rl.memory
 import rl.policy
@@ -55,6 +56,44 @@ keysetting = ([dxk.DIK_W,
                dxk.DIK_P])
 
 
+def conv1d_block(*args, **kwargs):
+    def conv1d_get_tensor(inputs):
+        x = layers.Conv1D(*args, **kwargs)(inputs)
+        x = layers.LeakyReLU()(x)
+        x = layers.BatchNormalization()(x)
+        return x
+    return conv1d_get_tensor
+
+
+def wavenet_block(n_atrous_filters, atrous_filter_size, atrous_rate):
+    def f(input_):
+        residual = input_
+        tanh_out = layers.Conv1D(n_atrous_filters, atrous_filter_size,
+                                 dilation_rate=atrous_rate,
+                                 padding='causal',
+                                 activation='tanh')(input_)
+        sigmoid_out = layers.Conv1D(n_atrous_filters, atrous_filter_size,
+                                    dilation_rate=atrous_rate,
+                                    padding='causal',
+                                    activation='sigmoid')(input_)
+        merged = layers.Multiply()([tanh_out, sigmoid_out])
+        merged = layers.BatchNormalization()(merged)
+        skip_out = layers.Conv1D(24, 1)(merged)
+        skip_out = layers.LeakyReLU()(skip_out)
+        skip_out = layers.BatchNormalization()(skip_out)
+        out = layers.Add()([skip_out, residual])
+        return out, skip_out
+    return f
+
+
+def attention_3d_block(inputs):
+    a = layers.Permute((2, 1))(inputs)
+    a = layers.Dense(30, activation='softmax')(a)
+    a_probs = layers.Permute((2, 1))(a)
+    output_attention_mul = layers.Multiply()([inputs, a_probs])
+    return output_attention_mul
+
+
 class TH123DllTrainEnv(rl.core.Env):
 
     def __init__(self):
@@ -70,7 +109,7 @@ class TH123DllTrainEnv(rl.core.Env):
         self.cache_state = []
 
     def parse_socket(self, socket_data):
-        return [float(x) for x in socket_data.decode().split(" ")]
+        return [float(x) for x in socket_data.decode().split(" ")][:-1]
 
     def reset(self):
         stinfo = subprocess.STARTUPINFO()
@@ -104,6 +143,7 @@ class TH123DllTrainEnv(rl.core.Env):
             self.connection.send(("%d %d" % (self.cache_act[0],
                                              self.cache_act[1]))
                                  .encode())
+            old_state = self.cache_state
             self.cache_state = self.parse_socket(self.connection.recv(255))
         except Exception:
             end = True
@@ -112,8 +152,12 @@ class TH123DllTrainEnv(rl.core.Env):
         if end:
             rwd = my_hp + 10.0 if int(en_hp) == 0 else 0.0
             rwd = -en_hp - 10.0 if int(my_hp) == 0 else 0.0
+        elif old_state[9 - self.current_act] > en_hp:
+            rwd = 1.0 + (old_state[9 - self.current_act] - en_hp) / 10.0
+        elif old_state[self.current_act + 8] > my_hp:
+            rwd = -(0.5 + (old_state[self.current_act + 8] - my_hp) / 20.0)
         else:
-            rwd = (my_hp - en_hp) / 100.0
+            rwd = (my_hp - en_hp) / 300.0
         return (self.cache_state,
                 rwd,
                 end,
@@ -127,11 +171,25 @@ class TH123DllTrainEnv(rl.core.Env):
             self.proc_handle.terminate()
 
     def new_model(self):
-        rnd_name = str(numpy.random.randint(10000))
-        m = keras.models.Sequential(name="TH123.AI." + rnd_name)
-        m.add(keras.layers.LSTM(128, input_shape=[None, 12]))
-        m.add(keras.layers.Dense(45))
-        return m
+        inp = layers.Input(shape=[30, 11])
+        inp_a = attention_3d_block(inp)
+        first = conv1d_block(24, 4, padding='causal')(inp_a)
+        A, B = wavenet_block(32, 2, 1)(first)
+        skip_connections = [B]
+        for i in range(1, 3):
+            A, B = wavenet_block(32, 2, 2 ** (i % 4))(A)
+            skip_connections.append(B)
+        for i in range(0, 6):
+            A, B = wavenet_block(32, 2, 2 ** (i % 3))(A)
+            skip_connections.append(B)
+        net = layers.Add()(skip_connections)
+        net = layers.LeakyReLU()(net)
+        net = conv1d_block(4, 1)(net)
+        net = layers.LeakyReLU()(net)
+        net = layers.Flatten()(net)
+        net = layers.Dense(45, activation='linear')(net)
+        return keras.models.Model(inputs=inp,
+                                  outputs=net)
 
     def fit(self, agt1, agt2, env, nb_steps, action_repetition=1,
             callbacks=None, verbose=1,
@@ -298,15 +356,15 @@ class TH123DllTrainEnv(rl.core.Env):
         return history
 
     def train(self):
-        self.smem1 = rl.memory.SequentialMemory(100000, window_length=36)
-        self.smem2 = rl.memory.SequentialMemory(100000, window_length=36)
+        self.smem1 = rl.memory.SequentialMemory(100000, window_length=30)
+        self.smem2 = rl.memory.SequentialMemory(100000, window_length=30)
         wrapped_policy = rl.policy.EpsGreedyQPolicy()
         self.spol = rl.policy.LinearAnnealedPolicy(wrapped_policy,
                                                    "eps",
                                                    0.99,
                                                    0.1,
                                                    0.05,
-                                                   10000000)
+                                                   1200000)
         self.smod1 = self.new_model()
         self.smod1.summary()
         self.smod2 = self.new_model()
@@ -320,19 +378,19 @@ class TH123DllTrainEnv(rl.core.Env):
                                      nb_actions=45,
                                      policy=self.spol,
                                      memory=self.smem1,
-                                     nb_steps_warmup=18000,
+                                     nb_steps_warmup=10000,
                                      gamma=0.998,
                                      target_model_update=50000,
-                                     train_interval=16)
+                                     train_interval=4)
         dq2 = rl.agents.dqn.DQNAgent(model=self.smod2,
                                      batch_size=BATCH,
                                      nb_actions=45,
                                      policy=self.spol,
                                      memory=self.smem2,
-                                     nb_steps_warmup=18000,
+                                     nb_steps_warmup=10000,
                                      gamma=0.998,
                                      target_model_update=50000,
-                                     train_interval=16)
+                                     train_interval=4)
         dq1.compile(keras.optimizers.Adam(), metrics=['mae'])
         dq2.compile(keras.optimizers.Adam(), metrics=['mae'])
 
@@ -441,11 +499,11 @@ class TH123EvalEnv(TH123DllTrainEnv):
         print([pos1x, pos2y,
                pos2x, pos2y, char1, char2,
                self.key_to_category(key1), self.key_to_category(key2),
-               hp1, hp2, wid, wcn])
+               hp1, hp2, wid])
         return [pos1x, pos2y,
                 pos2x, pos2y, char1, char2,
                 self.key_to_category(key1), self.key_to_category(key2),
-                hp1, hp2, wid, wcn], 0.0, False, {}
+                hp1, hp2, wid], 0.0, False, {}
 
     def reset(self):
         import game_utils as gu
@@ -457,7 +515,7 @@ class TH123EvalEnv(TH123DllTrainEnv):
         return
 
     def play(self, who=0):
-        self.smem = rl.memory.SequentialMemory(100000, window_length=36)
+        self.smem = rl.memory.SequentialMemory(100000, window_length=30)
         wrapped_policy = rl.policy.EpsGreedyQPolicy()
         self.spol = rl.policy.LinearAnnealedPolicy(wrapped_policy,
                                                    "eps",
