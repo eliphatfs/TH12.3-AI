@@ -10,7 +10,7 @@ fp.close()
 
 json_obj = json.loads(json_str)
 
-normal_items = ["episode_reward", "mean_absolute_error", "mean_q"]
+normal_items = ["duration", "episode_reward", "mean_absolute_error", "mean_q"]
 log_items = ["loss"]
 for item in normal_items:
     x = [i for i in range(len(json_obj[item]))]

@@ -78,7 +78,7 @@ def wavenet_block(n_atrous_filters, atrous_filter_size, atrous_rate):
                                     activation='sigmoid')(input_)
         merged = layers.Multiply()([tanh_out, sigmoid_out])
         merged = layers.BatchNormalization()(merged)
-        skip_out = layers.Conv1D(24, 1)(merged)
+        skip_out = layers.Conv1D(32, 1)(merged)
         skip_out = layers.LeakyReLU()(skip_out)
         skip_out = layers.BatchNormalization()(skip_out)
         out = layers.Add()([skip_out, residual])
@@ -150,14 +150,12 @@ class TH123DllTrainEnv(rl.core.Env):
         my_hp = self.cache_state[self.current_act + 8]
         en_hp = self.cache_state[9 - self.current_act]
         if end:
-            rwd = my_hp + 10.0 if int(en_hp) == 0 else 0.0
-            rwd = -en_hp - 10.0 if int(my_hp) == 0 else 0.0
+            rwd = my_hp / 100.0 + 10.0 if int(en_hp) == 0 else 0.0
+            rwd = -en_hp / 100.0 - 10.0 if int(my_hp) == 0 else 0.0
         elif old_state[9 - self.current_act] > en_hp:
-            rwd = 1.0 + (old_state[9 - self.current_act] - en_hp) / 10.0
-        elif old_state[self.current_act + 8] > my_hp:
-            rwd = -(0.5 + (old_state[self.current_act + 8] - my_hp) / 20.0)
+            rwd = 1.0 + (old_state[9 - self.current_act] - en_hp) / 1000.0
         else:
-            rwd = (my_hp - en_hp) / 300.0
+            rwd = 0
         return (self.cache_state,
                 rwd,
                 end,
@@ -173,18 +171,18 @@ class TH123DllTrainEnv(rl.core.Env):
     def new_model(self):
         inp = layers.Input(shape=[30, 11])
         inp_a = attention_3d_block(inp)
-        first = conv1d_block(24, 4, padding='causal')(inp_a)
-        A, B = wavenet_block(32, 2, 1)(first)
+        first = conv1d_block(32, 4, padding='causal')(inp_a)
+        A, B = wavenet_block(48, 2, 1)(first)
         skip_connections = [B]
         for i in range(1, 3):
-            A, B = wavenet_block(32, 2, 2 ** (i % 4))(A)
+            A, B = wavenet_block(48, 2, 2 ** (i % 4))(A)
             skip_connections.append(B)
         for i in range(0, 6):
-            A, B = wavenet_block(32, 2, 2 ** (i % 3))(A)
+            A, B = wavenet_block(48, 2, 2 ** (i % 3))(A)
             skip_connections.append(B)
         net = layers.Add()(skip_connections)
         net = layers.LeakyReLU()(net)
-        net = conv1d_block(4, 1)(net)
+        net = conv1d_block(6, 1)(net)
         net = layers.LeakyReLU()(net)
         net = layers.Flatten()(net)
         net = layers.Dense(45, activation='linear')(net)
@@ -514,25 +512,25 @@ class TH123EvalEnv(TH123DllTrainEnv):
     def close(self):
         return
 
-    def play(self, who=0):
+    def play(self):
         self.smem = rl.memory.SequentialMemory(100000, window_length=30)
         wrapped_policy = rl.policy.EpsGreedyQPolicy()
         self.spol = rl.policy.LinearAnnealedPolicy(wrapped_policy,
                                                    "eps",
                                                    0.99,
                                                    0.1,
-                                                   0.99,
+                                                   0.05,
                                                    1000000)
         self.smod = self.new_model()
         self.smod.summary()
         try:
-            self.smod.load_weights(MODEL_SAVE_PATH % (who + 1))
+            self.smod.load_weights(MODEL_SAVE_PATH % (self.my + 1))
         except Exception:
             pass
         dqn = rl.agents.dqn.DQNAgent(model=self.smod,
                                      batch_size=BATCH,
                                      nb_actions=45,
-                                     policy=self.spol,
+                                     test_policy=self.spol,
                                      memory=self.smem,
                                      nb_steps_warmup=18000,
                                      gamma=0.995,
